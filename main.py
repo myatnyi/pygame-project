@@ -67,11 +67,8 @@ def game():
             velocity += ACCELERATION * direction
             if velocity.length() >= MAX_SPEED:
                 velocity.scale_to_length(MAX_SPEED)
-        else:
-            velocity[0] *= FRICTION
-            velocity[0] = math.trunc(velocity[0])
-            velocity[1] *= FRICTION
-            velocity[1] = math.trunc(velocity[1])
+        elif velocity.length() != 0:
+            velocity.scale_to_length(math.trunc(velocity.length() * FRICTION))
 
         pos[0] += velocity[0]
         pos[1] += velocity[1]
@@ -84,7 +81,7 @@ def game():
             intro_rect.x = pos[0] - intro_rect.width // 2
             screen.blit(string_rendered, intro_rect)
         
-        pygame.draw.circle(screen, 'red', pos, 25)
+        pygame.draw.circle(screen, 'yellow', pos, 25)
         pygame.display.flip()
         clock.tick(FPS)
 
