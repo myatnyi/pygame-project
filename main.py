@@ -1,5 +1,6 @@
 import pygame
 import sys
+import os
 import math
 
 FPS = 50
@@ -8,11 +9,76 @@ pygame.display.set_caption('Жока и бока')
 size = WIDTH, HEIGHT = 1920, 1080
 screen = pygame.display.set_mode(size)
 clock = pygame.time.Clock()
-MAX_SPEED = 50
-ACCELERATION = 5
-FRICTION = 0.9
 
 DEBUG = True
+
+
+class Entity(pygame.sprite.Sprite):
+    def __init__(self, img_name, columns, rows, x, y, all_sprites):
+        super().__init__(all_sprites)
+        self.frames = []
+        self.img = self.load_image(img_name)
+        self.cut_sheet(self.img, columns, rows)
+        self.cur_frame = 0
+        self.image = self.frames[self.cur_frame]
+        self.rect = self.rect.move(x, y)
+
+    def load_image(self, name):
+        fullname = os.path.join('data', name)
+        if not os.path.isfile(fullname):
+            fullname = os.path.join('data', 'notexture.png')
+        image = pygame.image.load(fullname)
+        return image
+
+    def cut_sheet(self, img_name, columns, rows):
+        self.rect = pygame.Rect(0, 0, img_name.get_width() // columns,
+                                img_name.get_height() // rows)
+        for j in range(rows):
+            for i in range(columns):
+                frame_location = (self.rect.w * i, self.rect.h * j)
+                self.frames.append(img_name.subsurface(pygame.Rect(
+                    frame_location, self.rect.size)))
+
+    def update(self):
+        self.cur_frame = (self.cur_frame + 1) % len(self.frames)
+        self.image = self.frames[self.cur_frame]
+
+
+class MovementObject(Entity):
+    def __init__(self, img_name, columns, rows, x, y, all_sprites):
+        super().__init__(img_name, columns, rows, x, y, all_sprites)
+        self.MAX_SPEED = 50
+        self.ACCELERATION = 5
+        self.FRICTION = 0.9
+        self.direction = pygame.math.Vector2(0, 0)
+        self.velocity = pygame.math.Vector2(0, 0)
+
+    def update(self):
+        super().update()
+        if self.direction.length() != 0:
+            direction = self.direction.normalize()
+            self.velocity += self.ACCELERATION * direction
+            if self.velocity.length() >= self.MAX_SPEED:
+                self.velocity.scale_to_length(self.MAX_SPEED)
+        elif self.velocity.length() != 0:
+            self.velocity.scale_to_length(math.trunc(self.velocity.length() * self.FRICTION))
+        self.rect.x += self.velocity.x
+        self.rect.y += self.velocity.y
+
+
+class Player(MovementObject):
+    def __init__(self, img_name, columns, rows, x, y, all_sprites):
+        super().__init__(img_name, columns, rows, x, y, all_sprites)
+
+    def update(self):
+        key = pygame.key.get_pressed()
+        up = key[pygame.K_w] or key[pygame.K_UP]
+        down = key[pygame.K_s] or key[pygame.K_DOWN]
+        left = key[pygame.K_a] or key[pygame.K_LEFT]
+        right = key[pygame.K_d] or key[pygame.K_RIGHT]
+        self.direction = pygame.Vector2(right - left, down - up)
+        super().update()
+
 
 def terminate():
     pygame.quit()
@@ -20,24 +86,45 @@ def terminate():
 
 
 def start_screen():
-    intro_text = ["типа меню", "",
-                  "типа кнопка",
-                  "да",
-                  "нет"]
-
-    screen.fill('blue')
-    font = pygame.font.Font(None, 30)
+    screen.fill('black')
+    font = pygame.font.Font(None, 50)
     text_coord = 50
-    for line in intro_text:
-        string_rendered = font.render(line, True, pygame.Color('white'))
-        intro_rect = string_rendered.get_rect()
-        text_coord += 10
-        intro_rect.top = text_coord
-        intro_rect.x = 10
-        text_coord += intro_rect.height
-        screen.blit(string_rendered, intro_rect)
+
+    play_string_rendered = font.render('play', True, pygame.Color('black'))
+    play_intro_rect = play_string_rendered.get_rect()
+    play_intro_rect.x = 890
+    play_intro_rect.y = 400
+
+    rules_string_rendered = font.render('rules', True, pygame.Color('black'))
+    rules_intro_rect = play_string_rendered.get_rect()
+    rules_intro_rect.x = 890
+    rules_intro_rect.y = 450
+
+    leave_string_rendered = font.render('leave', True, pygame.Color('black'))
+    leave_intro_rect = play_string_rendered.get_rect()
+    leave_intro_rect.x = 890
+    leave_intro_rect.y = 500
 
     while True:
+        if play_intro_rect.x <= pygame.mouse.get_pos()[0] <= play_intro_rect.x + 140 and play_intro_rect.y <= \
+                pygame.mouse.get_pos()[1] <= play_intro_rect.y + 40:
+            pygame.draw.rect(screen, 'red', [play_intro_rect.x, play_intro_rect.y, 140, 40])
+        else:
+            pygame.draw.rect(screen, 'white', [play_intro_rect.x, play_intro_rect.y, 140, 40])
+        screen.blit(play_string_rendered, (play_intro_rect.x + 40, play_intro_rect.y))
+        if rules_intro_rect.x <= pygame.mouse.get_pos()[0] <= rules_intro_rect.x + 140 and rules_intro_rect.y <= \
+                pygame.mouse.get_pos()[1] <= rules_intro_rect.y + 40:
+            pygame.draw.rect(screen, 'red', [rules_intro_rect.x, rules_intro_rect.y, 140, 40])
+        else:
+            pygame.draw.rect(screen, 'white', [rules_intro_rect.x, rules_intro_rect.y, 140, 40])
+        screen.blit(rules_string_rendered, (rules_intro_rect.x + 30, rules_intro_rect.y))
+        if leave_intro_rect.x <= pygame.mouse.get_pos()[0] <= leave_intro_rect.x + 140 and leave_intro_rect.y <= \
+                pygame.mouse.get_pos()[1] <= leave_intro_rect.y + 40:
+            pygame.draw.rect(screen, 'red', [leave_intro_rect.x, leave_intro_rect.y, 140, 40])
+        else:
+            pygame.draw.rect(screen, 'white', [leave_intro_rect.x, leave_intro_rect.y, 140, 40])
+        screen.blit(leave_string_rendered, (leave_intro_rect.x + 30, leave_intro_rect.y))
+        pygame.display.update()
         for event in pygame.event.get():
             if event.type == pygame.QUIT:
                 terminate()
@@ -49,39 +136,24 @@ def start_screen():
 
 
 def game():
+    all_sprites = pygame.sprite.Group()
     font = pygame.font.Font(None, 30)
-    pos = [WIDTH // 2, HEIGHT // 2]
-    velocity = pygame.math.Vector2(0, 0)
+    player = Player('chr.png', 1, 1, WIDTH // 2, HEIGHT // 2, all_sprites)
     while True:
         for event in pygame.event.get():
             if event.type == pygame.QUIT or event.type == pygame.KEYDOWN and event.key == pygame.K_ESCAPE:
                 terminate()
-        key = pygame.key.get_pressed()
-        up = key[pygame.K_w] or key[pygame.K_UP]
-        down = key[pygame.K_s] or key[pygame.K_DOWN]
-        left = key[pygame.K_a] or key[pygame.K_LEFT]
-        right = key[pygame.K_d] or key[pygame.K_RIGHT]
-        direction = pygame.math.Vector2(right - left, down - up)
-        if direction.length() != 0:
-            direction = direction.normalize()
-            velocity += ACCELERATION * direction
-            if velocity.length() >= MAX_SPEED:
-                velocity.scale_to_length(MAX_SPEED)
-        elif velocity.length() != 0:
-            velocity.scale_to_length(math.trunc(velocity.length() * FRICTION))
-
-        pos[0] += velocity[0]
-        pos[1] += velocity[1]
         screen.fill('black')
-        
+
+        all_sprites.update()
+
         if DEBUG:
-            string_rendered = font.render(str(velocity), True, 'white')
+            string_rendered = font.render(str(player.rect), True, 'white')
             intro_rect = string_rendered.get_rect()
-            intro_rect.top = pos[1] + 20
-            intro_rect.x = pos[0] - intro_rect.width // 2
+            intro_rect.top = player.rect.y + 50
+            intro_rect.x = player.rect.x - intro_rect.width // 2
             screen.blit(string_rendered, intro_rect)
-        
-        pygame.draw.circle(screen, 'yellow', pos, 25)
+        all_sprites.draw(screen)
         pygame.display.flip()
         clock.tick(FPS)
 
