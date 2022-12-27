@@ -2,6 +2,7 @@ import pygame
 import sys
 import os
 import math
+from enum import Enum
 
 FPS = 50
 pygame.init()
@@ -11,6 +12,14 @@ screen = pygame.display.set_mode(size)
 clock = pygame.time.Clock()
 
 DEBUG = True
+
+
+class PlayerSM(Enum):
+    IDLE = 0
+    WALK = 1
+    ATTACK = 2
+    SHIELD = 3
+    ROLL = 4
 
 
 class Entity(pygame.sprite.Sprite):
@@ -40,6 +49,9 @@ class Entity(pygame.sprite.Sprite):
                     frame_location, self.rect.size)))
 
     def update(self):
+        self.change_frame()
+
+    def change_frame(self):
         self.cur_frame = (self.cur_frame + 1) % len(self.frames)
         self.image = self.frames[self.cur_frame]
 
@@ -54,7 +66,10 @@ class MovementObject(Entity):
         self.velocity = pygame.math.Vector2(0, 0)
 
     def update(self):
-        super().update()
+        self.change_frame()
+        self.move_towards()
+
+    def move_towards(self):
         if self.direction.length() != 0:
             direction = self.direction.normalize()
             self.velocity += self.ACCELERATION * direction
@@ -69,15 +84,86 @@ class MovementObject(Entity):
 class Player(MovementObject):
     def __init__(self, img_name, columns, rows, x, y, all_sprites):
         super().__init__(img_name, columns, rows, x, y, all_sprites)
+        self.state = PlayerSM.IDLE
 
     def update(self):
+        match self.state:
+            case PlayerSM.IDLE:
+                self.move_towards()
+                self.attack()
+                self.shield()
+                self.roll()
+                self.idle_animation()
+            case PlayerSM.WALK:
+                self.move_towards()
+                self.attack()
+                self.shield()
+                self.roll()
+                self.walk_animation()
+            case PlayerSM.ROLL:
+                self.roll_animation()
+            case PlayerSM.ATTACK:
+                self.attack_animation()
+            case PlayerSM.SHIELD:
+                self.shield_animation()
+
+# функции состояний
+    def move_towards(self):
+        self.state = PlayerSM.WALK
+        self.calculate_direction()
+        super().move_towards()
+
+    def attack(self):
+        button = pygame.mouse.get_pressed()
+        if button[0]:
+            self.state = PlayerSM.ATTACK
+
+    def shield(self):
+        button = pygame.mouse.get_pressed()
+        if button[2]:
+            self.state = PlayerSM.SHIELD
+
+    def roll(self):
+        keys = pygame.key.get_pressed()
+        if keys[pygame.K_SPACE]:
+            self.state = PlayerSM.ROLL
+
+    def calculate_direction(self):
         key = pygame.key.get_pressed()
         up = key[pygame.K_w] or key[pygame.K_UP]
         down = key[pygame.K_s] or key[pygame.K_DOWN]
         left = key[pygame.K_a] or key[pygame.K_LEFT]
         right = key[pygame.K_d] or key[pygame.K_RIGHT]
         self.direction = pygame.Vector2(right - left, down - up)
-        super().update()
+        if self.direction.length() == 0:
+            self.state = PlayerSM.IDLE
+
+    def calculate_degree(self, vector):
+        return (math.atan2(vector.y, vector.x) * 180 / math.pi) * (vector.y / abs(vector.y))
+
+    def mouse_degree(self):
+        mouse_pos = pygame.mouse.get_pos()
+        pos = (mouse_pos[0] - self.rect.x - self.rect.width // 2, mouse_pos[1] - self.rect.y - self.rect.height // 2)
+        return self.calculate_degree(pygame.math.Vector2(pos).normalize())
+
+# анимации к состояниям
+    def idle_animation(self):
+        pass
+
+    def walk_animation(self):
+        pass
+
+    def attack_animation(self):
+        # код
+        self.state = PlayerSM.IDLE
+
+    def roll_animation(self):
+        # код
+        self.state = PlayerSM.IDLE
+
+    def shield_animation(self):
+        # код
+        self.state = PlayerSM.IDLE
 
 
 def terminate():
@@ -148,7 +234,7 @@ def game():
         all_sprites.update()
 
         if DEBUG:
-            string_rendered = font.render(str(player.rect), True, 'white')
+            string_rendered = font.render(str(player.state), True, 'white')
             intro_rect = string_rendered.get_rect()
             intro_rect.top = player.rect.y + 50
             intro_rect.x = player.rect.x - intro_rect.width // 2
