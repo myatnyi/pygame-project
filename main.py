@@ -139,12 +139,18 @@ class Player(MovementObject):
             self.state = PlayerSM.IDLE
 
     def calculate_degree(self, vector):
-        return (math.atan2(vector.y, vector.x) * 180 / math.pi) * (vector.y / abs(vector.y))
+        coef = 0
+        if vector.y < 0:
+            coef = 360
+        return math.atan2(vector.y, vector.x) * 180 / math.pi + coef
 
     def mouse_degree(self):
         mouse_pos = pygame.mouse.get_pos()
         pos = (mouse_pos[0] - self.rect.x - self.rect.width // 2, mouse_pos[1] - self.rect.y - self.rect.height // 2)
-        return self.calculate_degree(pygame.math.Vector2(pos).normalize())
+        vector = pygame.math.Vector2(pos)
+        if vector.length() != 0:
+            vector = vector.normalize()
+        return self.calculate_degree(vector)
 
 # анимации к состояниям
     def idle_animation(self):
@@ -234,7 +240,7 @@ def game():
         all_sprites.update()
 
         if DEBUG:
-            string_rendered = font.render(str(player.state), True, 'white')
+            string_rendered = font.render(str(player.mouse_degree()), True, 'white')
             intro_rect = string_rendered.get_rect()
             intro_rect.top = player.rect.y + 50
             intro_rect.x = player.rect.x - intro_rect.width // 2
