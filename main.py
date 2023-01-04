@@ -4,7 +4,7 @@ import os
 import math
 from enum import Enum
 
-FPS = 50
+FPS = 60
 pygame.init()
 pygame.display.set_caption('Жока и бока')
 size = WIDTH, HEIGHT = 1920, 1080
@@ -23,11 +23,10 @@ class PlayerSM(Enum):
 
 
 class Entity(pygame.sprite.Sprite):
-    def __init__(self, img_name, columns, rows, x, y, all_sprites):
+    def __init__(self, prev_img, x, y, all_sprites):
         super().__init__(all_sprites)
-        self.frames = []
-        self.img = self.load_image(img_name)
-        self.cut_sheet(self.img, columns, rows)
+        self.img = self.load_image(prev_img)
+        self.frames = self.cut_sheet(self.img, 1, 1)
         self.cur_frame = 0
         self.image = self.frames[self.cur_frame]
         self.rect = self.rect.move(x, y)
@@ -40,33 +39,36 @@ class Entity(pygame.sprite.Sprite):
         return image
 
     def cut_sheet(self, img_name, columns, rows):
+        frames = []
         self.rect = pygame.Rect(0, 0, img_name.get_width() // columns,
                                 img_name.get_height() // rows)
         for j in range(rows):
             for i in range(columns):
                 frame_location = (self.rect.w * i, self.rect.h * j)
-                self.frames.append(img_name.subsurface(pygame.Rect(
+                frames.append(img_name.subsurface(pygame.Rect(
                     frame_location, self.rect.size)))
+        return frames
 
     def update(self):
-        self.change_frame()
+        self.change_frame(self.frames, 1)
 
-    def change_frame(self):
-        self.cur_frame = (self.cur_frame + 1) % len(self.frames)
-        self.image = self.frames[self.cur_frame]
+    def change_frame(self, frames, speed_coef):
+        self.cur_frame = (self.cur_frame + speed_coef) % len(frames)
+        self.image = frames[math.trunc(self.cur_frame)]
 
 
 class MovementObject(Entity):
-    def __init__(self, img_name, columns, rows, x, y, all_sprites):
-        super().__init__(img_name, columns, rows, x, y, all_sprites)
-        self.MAX_SPEED = 50
-        self.ACCELERATION = 5
-        self.FRICTION = 0.9
+    def __init__(self, prev_img, x, y, all_sprites):
+        super().__init__(prev_img, x, y, all_sprites)
+        self.MAX_SPEED = 0
+        self.ACCELERATION = 0
+        self.FRICTION = 0
+        self.GRAVITY = 0
         self.direction = pygame.math.Vector2(0, 0)
         self.velocity = pygame.math.Vector2(0, 0)
 
     def update(self):
-        self.change_frame()
+        self.change_frame(self.frames, 1)
         self.move_towards()
 
     def move_towards(self):
@@ -77,14 +79,29 @@ class MovementObject(Entity):
                 self.velocity.scale_to_length(self.MAX_SPEED)
         elif self.velocity.length() != 0:
             self.velocity.scale_to_length(math.trunc(self.velocity.length() * self.FRICTION))
-        self.rect.x += self.velocity.x
-        self.rect.y += self.velocity.y
+        self.rect = self.rect.move(self.velocity.x, self.velocity.y)
 
 
 class Player(MovementObject):
-    def __init__(self, img_name, columns, rows, x, y, all_sprites):
-        super().__init__(img_name, columns, rows, x, y, all_sprites)
+    def __init__(self, prev_img,  x, y, all_sprites):
+        # загрузка анимаций
+        idle_img = self.load_image('chr.png')
+        self.idle_sheet = self.cut_sheet(idle_img, 1, 1)
+        walk_img = self.load_image('chr-walk.png')
+        self.walk_sheet = self.cut_sheet(walk_img, 5, 1)
+        attack_img = self.load_image('')
+        self.attack_sheet = self.cut_sheet(attack_img, 1, 1)
+        shield_img = self.load_image('')
+        self.shield_sheet = self.cut_sheet(shield_img, 1, 1)
+        roll_img = self.load_image('')
+        self.roll_sheet = self.cut_sheet(roll_img, 1, 1)
+        # инит
+        super().__init__(prev_img, x, y, all_sprites)
         self.state = PlayerSM.IDLE
+        self.MAX_SPEED = 8
+        self.ACCELERATION = 2
+        self.FRICTION = 0.9
+        self.GRAVITY = 0.9
 
     def update(self):
         match self.state:
@@ -106,6 +123,7 @@ class Player(MovementObject):
                 self.attack_animation()
             case PlayerSM.SHIELD:
                 self.shield_animation()
+        self.rect = self.rect.move(0, 0)
 
 # функции состояний
     def move_towards(self):
@@ -117,16 +135,19 @@ class Player(MovementObject):
         button = pygame.mouse.get_pressed()
         if button[0]:
             self.state = PlayerSM.ATTACK
+            self.cur_frame = 0
 
     def shield(self):
         button = pygame.mouse.get_pressed()
         if button[2]:
             self.state = PlayerSM.SHIELD
+            self.cur_frame = 0
 
     def roll(self):
         keys = pygame.key.get_pressed()
         if keys[pygame.K_SPACE]:
             self.state = PlayerSM.ROLL
+            self.cur_frame = 0
 
     def calculate_direction(self):
         key = pygame.key.get_pressed()
@@ -137,12 +158,7 @@ class Player(MovementObject):
         self.direction = pygame.Vector2(right - left, down - up)
         if self.direction.length() == 0:
             self.state = PlayerSM.IDLE
-
-    def calculate_degree(self, vector):
-        coef = 0
-        if vector.y < 0:
-            coef = 360
-        return math.atan2(vector.y, vector.x) * 180 / math.pi + coef
+            self.cur_frame = 0
 
     def mouse_degree(self):
         mouse_pos = pygame.mouse.get_pos()
@@ -150,26 +166,30 @@ class Player(MovementObject):
         vector = pygame.math.Vector2(pos)
         if vector.length() != 0:
             vector = vector.normalize()
-        return self.calculate_degree(vector)
+        return math.atan2(vector.y, vector.x) * 180 / math.pi + (360 if vector.y < 0 else 0)
 
 # анимации к состояниям
     def idle_animation(self):
-        pass
+        self.change_frame(self.idle_sheet, 1)
 
     def walk_animation(self):
-        pass
+        self.change_frame(self.walk_sheet, 0.2)
+
 
     def attack_animation(self):
         # код
         self.state = PlayerSM.IDLE
+        self.cur_frame = 0
 
     def roll_animation(self):
         # код
         self.state = PlayerSM.IDLE
+        self.cur_frame = 0
 
     def shield_animation(self):
         # код
         self.state = PlayerSM.IDLE
+        self.cur_frame = 0
 
 
 def terminate():
@@ -230,7 +250,7 @@ def start_screen():
 def game():
     all_sprites = pygame.sprite.Group()
     font = pygame.font.Font(None, 30)
-    player = Player('chr.png', 1, 1, WIDTH // 2, HEIGHT // 2, all_sprites)
+    player = Player('chr.png', WIDTH // 2, HEIGHT // 2, all_sprites)
     while True:
         for event in pygame.event.get():
             if event.type == pygame.QUIT or event.type == pygame.KEYDOWN and event.key == pygame.K_ESCAPE:
@@ -240,10 +260,10 @@ def game():
         all_sprites.update()
 
         if DEBUG:
-            string_rendered = font.render(str(player.mouse_degree()), True, 'white')
+            string_rendered = font.render(str(player.rect), True, 'white')
             intro_rect = string_rendered.get_rect()
             intro_rect.top = player.rect.y + 50
-            intro_rect.x = player.rect.x - intro_rect.width // 2
+            intro_rect.x = player.rect.x + player.rect.width // 2 - intro_rect.width // 2
             screen.blit(string_rendered, intro_rect)
         all_sprites.draw(screen)
         pygame.display.flip()
