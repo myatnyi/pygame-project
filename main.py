@@ -30,6 +30,7 @@ class Entity(pygame.sprite.Sprite):
         self.cur_frame = 0
         self.image = self.frames[self.cur_frame]
         self.rect = self.rect.move(x, y)
+        self.info = ''
 
     def load_image(self, name):
         fullname = os.path.join('data', name)
@@ -53,7 +54,7 @@ class Entity(pygame.sprite.Sprite):
         self.change_frame(self.frames, 1)
 
     def change_frame(self, frames, speed_coef):
-        self.cur_frame = (self.cur_frame + speed_coef) % len(frames)
+        self.cur_frame = round((self.cur_frame + speed_coef) % len(frames), 1)
         self.image = frames[math.trunc(self.cur_frame)]
 
 
@@ -64,12 +65,17 @@ class MovementObject(Entity):
         self.ACCELERATION = 0
         self.FRICTION = 0
         self.GRAVITY = 0
+        self.FALL_GRAVITY = 0
+        self.BOUNCE_FORCE = 0
         self.direction = pygame.math.Vector2(0, 0)
         self.velocity = pygame.math.Vector2(0, 0)
+        self.bounce_vel = 0
+        self.bounce_dist = 0
 
     def update(self):
         self.change_frame(self.frames, 1)
         self.move_towards()
+        self.bounce_towards()
 
     def move_towards(self):
         if self.direction.length() != 0:
@@ -80,6 +86,13 @@ class MovementObject(Entity):
         elif self.velocity.length() != 0:
             self.velocity.scale_to_length(math.trunc(self.velocity.length() * self.FRICTION))
         self.rect = self.rect.move(self.velocity.x, self.velocity.y)
+
+    def bounce_towards(self):
+        self.rect = self.rect.move(0, self.bounce_dist)
+        self.bounce_dist = self.bounce_dist + self.bounce_vel \
+            if self.bounce_vel != 0 else self.bounce_dist * self.FALL_GRAVITY
+        self.rect = self.rect.move(0, -self.bounce_dist)
+        self.bounce_vel = math.trunc(self.bounce_vel * self.GRAVITY)
 
 
 class Player(MovementObject):
@@ -102,6 +115,8 @@ class Player(MovementObject):
         self.ACCELERATION = 2
         self.FRICTION = 0.9
         self.GRAVITY = 0.9
+        self.FALL_GRAVITY = 0.75
+        self.BOUNCE_FORCE = 4
 
     def update(self):
         match self.state:
@@ -123,12 +138,13 @@ class Player(MovementObject):
                 self.attack_animation()
             case PlayerSM.SHIELD:
                 self.shield_animation()
-        self.rect = self.rect.move(0, 0)
+        self.info = self.rect
 
 # функции состояний
     def move_towards(self):
         self.state = PlayerSM.WALK
         self.calculate_direction()
+        self.bounce_towards()
         super().move_towards()
 
     def attack(self):
@@ -174,7 +190,8 @@ class Player(MovementObject):
 
     def walk_animation(self):
         self.change_frame(self.walk_sheet, 0.2)
-
+        if self.cur_frame == 2:
+            self.bounce_vel += self.BOUNCE_FORCE
 
     def attack_animation(self):
         # код
@@ -260,7 +277,7 @@ def game():
         all_sprites.update()
 
         if DEBUG:
-            string_rendered = font.render(str(player.rect), True, 'white')
+            string_rendered = font.render(str(player.info), True, 'white')
             intro_rect = string_rendered.get_rect()
             intro_rect.top = player.rect.y + 50
             intro_rect.x = player.rect.x + player.rect.width // 2 - intro_rect.width // 2
