@@ -94,6 +94,10 @@ class MovementObject(Entity):
         self.rect = self.rect.move(0, -self.bounce_dist)
         self.bounce_vel = math.trunc(self.bounce_vel * self.GRAVITY)
 
+    def bounce_rotate(self, angle, speed):
+        self.image = pygame.transform.rotate(self.image, math.sin(pygame.time.get_ticks() / speed) * angle)
+        self.rect = self.image.get_rect().move(self.rect.x, self.rect.y)
+
 
 class Player(MovementObject):
     def __init__(self, prev_img,  x, y, all_sprites):
@@ -138,7 +142,7 @@ class Player(MovementObject):
                 self.attack_animation()
             case PlayerSM.SHIELD:
                 self.shield_animation()
-        self.info = self.rect
+        self.info = pygame.time.get_ticks()
 
 # функции состояний
     def move_towards(self):
@@ -190,6 +194,7 @@ class Player(MovementObject):
 
     def walk_animation(self):
         self.change_frame(self.walk_sheet, 0.2)
+        self.bounce_rotate(10, 100)
         if self.cur_frame == 2:
             self.bounce_vel += self.BOUNCE_FORCE
 
