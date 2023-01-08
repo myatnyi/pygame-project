@@ -10,7 +10,6 @@ pygame.display.set_caption('Жока и бока')
 size = WIDTH, HEIGHT = 1920, 1080
 screen = pygame.display.set_mode(size)
 clock = pygame.time.Clock()
-
 DEBUG = True
 
 
@@ -31,6 +30,7 @@ class Entity(pygame.sprite.Sprite):
         self.image = self.frames[self.cur_frame]
         self.rect = self.rect.move(x, y)
         self.info = ''
+        self.count_frames = 0
 
     def load_image(self, name):
         fullname = os.path.join('data', name)
@@ -52,6 +52,7 @@ class Entity(pygame.sprite.Sprite):
 
     def update(self):
         self.change_frame(self.frames, 1)
+        self.count_frames += 1
 
     def change_frame(self, frames, speed_coef):
         self.cur_frame = round((self.cur_frame + speed_coef) % len(frames), 1)
@@ -73,7 +74,7 @@ class MovementObject(Entity):
         self.bounce_dist = 0
 
     def update(self):
-        self.change_frame(self.frames, 1)
+        super().update()
         self.move_towards()
         self.bounce_towards()
 
@@ -121,6 +122,7 @@ class Player(MovementObject):
         self.GRAVITY = 0.9
         self.FALL_GRAVITY = 0.75
         self.BOUNCE_FORCE = 4
+        self.particles = pygame.sprite.Group()
 
     def update(self):
         match self.state:
@@ -142,7 +144,11 @@ class Player(MovementObject):
                 self.attack_animation()
             case PlayerSM.SHIELD:
                 self.shield_animation()
-        self.info = pygame.time.get_ticks()
+        self.count_frames += 1
+        self.info = self.image
+        self.draw_shadow()
+        self.particles.update()
+        self.particles.draw(screen)
 
 # функции состояний
     def move_towards(self):
@@ -188,6 +194,10 @@ class Player(MovementObject):
             vector = vector.normalize()
         return math.atan2(vector.y, vector.x) * 180 / math.pi + (360 if vector.y < 0 else 0)
 
+    def draw_shadow(self):
+        if self.count_frames % 12 == 0:
+            self.particles.add(Shadow(self.image, self.rect.x, self.rect.y))
+
 # анимации к состояниям
     def idle_animation(self):
         self.change_frame(self.idle_sheet, 1)
@@ -212,6 +222,20 @@ class Player(MovementObject):
         # код
         self.state = PlayerSM.IDLE
         self.cur_frame = 0
+
+
+class Shadow(pygame.sprite.Sprite):
+    def __init__(self, img, x, y):
+        super().__init__()
+        self.image = img.copy()
+        self.rect = self.image.get_rect().move(x, y)
+        self.image.set_alpha(128)
+
+    def update(self):
+        if self.image.get_alpha() - 4 == 0:
+            self.kill()
+        else:
+            self.image.set_alpha(self.image.get_alpha() - 4)
 
 
 def terminate():
@@ -277,7 +301,7 @@ def game():
         for event in pygame.event.get():
             if event.type == pygame.QUIT or event.type == pygame.KEYDOWN and event.key == pygame.K_ESCAPE:
                 terminate()
-        screen.fill('black')
+        screen.fill('red')
 
         all_sprites.update()
 
