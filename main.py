@@ -100,16 +100,11 @@ class MovementObject(Entity):
 class Player(MovementObject):
     def __init__(self, prev_img,  x, y, all_sprites):
         # загрузка анимаций
-        idle_img = self.load_image('chr.png')
-        self.idle_sheet = self.cut_sheet(idle_img, 1, 1)
-        walk_img = self.load_image('chr-walk.png')
-        self.walk_sheet = self.cut_sheet(walk_img, 5, 1)
-        attack_img = self.load_image('')
-        self.attack_sheet = self.cut_sheet(attack_img, 1, 1)
-        shield_img = self.load_image('')
-        self.shield_sheet = self.cut_sheet(shield_img, 1, 1)
-        roll_img = self.load_image('')
-        self.roll_sheet = self.cut_sheet(roll_img, 1, 1)
+        self.idle_sheet = self.load_animation('chr-idle', 5)
+        self.walk_sheet = self.load_animation('chr-walk', 5)
+        self.attack_sheet = self.load_animation('chr-attack', 1)
+        self.shield_sheet = self.load_animation('chr-shield', 1)
+        self.roll_sheet = self.load_animation('chr-roll', 1)
         # инит
         super().__init__(prev_img, x, y, all_sprites)
         self.state = PlayerSM.IDLE
@@ -142,10 +137,10 @@ class Player(MovementObject):
             case PlayerSM.SHIELD:
                 self.shield_animation()
         self.count_frames += 1
-        self.info = self.image
         self.draw_shadow()
         self.particles.update()
         self.particles.draw(screen)
+        self.info = self.determine_sheet()
 
 # функции состояний
     def move_towards(self):
@@ -181,7 +176,6 @@ class Player(MovementObject):
         self.direction = pygame.Vector2(right - left, down - up)
         if self.direction.length() == 0:
             self.state = PlayerSM.IDLE
-            self.cur_frame = 0
 
     def mouse_degree(self):
         mouse_pos = pygame.mouse.get_pos()
@@ -195,12 +189,35 @@ class Player(MovementObject):
         if self.count_frames % 12 == 0:
             self.particles.add(Shadow(self.image, self.rect.x, self.rect.y))
 
+# загрузка анимаций
+    def load_animation(self, base, columns):
+        sheets = []
+        img = self.load_image(f'{base}-right.png')
+        sheets.append(self.cut_sheet(img, columns, 1))
+        img = self.load_image(f'{base}-down.png')
+        sheets.append(self.cut_sheet(img, columns, 1))
+        img = self.load_image(f'{base}-left.png')
+        sheets.append(self.cut_sheet(img, columns, 1))
+        img = self.load_image(f'{base}-left-up.png')
+        sheets.append(self.cut_sheet(img, columns, 1))
+        img = self.load_image(f'{base}-up.png')
+        sheets.append(self.cut_sheet(img, columns, 1))
+        img = self.load_image(f'{base}-right-up.png')
+        sheets.append(self.cut_sheet(img, columns, 1))
+        return sheets
+
 # анимации к состояниям
+    def determine_sheet(self):
+        ranges = [range(0, 60), range(60, 120), range(120, 180), range(180, 240), range(240, 300), range(30, 360)]
+        for i in range(len(ranges)):
+            if int(self.mouse_degree()) in ranges[i]:
+                return i
+
     def idle_animation(self):
-        self.change_frame(self.idle_sheet, 1)
+        self.change_frame(self.idle_sheet[self.determine_sheet()], 0.1)
 
     def walk_animation(self):
-        self.change_frame(self.walk_sheet, 0.2)
+        self.change_frame(self.walk_sheet[self.determine_sheet()], 0.2)
         self.bounce_rotate(10, 100)
         if self.cur_frame == 2:
             self.bounce_vel += self.BOUNCE_FORCE
