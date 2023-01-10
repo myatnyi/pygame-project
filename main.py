@@ -11,15 +11,12 @@ size = WIDTH, HEIGHT = 1920, 1080
 screen = pygame.display.set_mode(size)
 clock = pygame.time.Clock()
 DEBUG = True
-
-
 class PlayerSM(Enum):
     IDLE = 0
     WALK = 1
     ATTACK = 2
     SHIELD = 3
     ROLL = 4
-
 
 class Entity(pygame.sprite.Sprite):
     def __init__(self, prev_img, x, y, all_sprites):
@@ -239,56 +236,62 @@ class Shadow(pygame.sprite.Sprite):
 
 
 def terminate():
+
     pygame.quit()
     sys.exit()
 
+class MenuSM(Enum):
+    MENU = 0
+    START = 1
+    RULES = 2
+    LEAVE = 3
+
+STATE = MenuSM.MENU
+def print_text(text, x, y):
+    font = pygame.font.Font(None, 50)
+    need_text = font.render(text, True, pygame.Color('black'))
+    screen.blit(need_text, (x, y))
+class Button:
+    def __init__(self, width, height, x, y, message, state):
+        self.width = width
+        self.height = height
+        self.inactive_color = 'white'
+        self.active_color = 'red'
+        self.x = x
+        self.y = y
+        self.message = message
+        self.state = state
+
+    def draw(self):
+        global STATE
+        pos = pygame.mouse.get_pos()
+        rect = pygame.draw.rect(screen, self.inactive_color, (self.x, self.y, self.width, self.height))
+        if rect.collidepoint(pos):
+            rect = pygame.draw.rect(screen, self.active_color, (self.x, self.y, self.width, self.height))
+        if pygame.mouse.get_pressed()[0] == 1 and rect.collidepoint(pos):
+            STATE = self.state
+        print_text(self.message, self.x + 60, self.y + 10)
+    def update(self):
+        pass
+
+
 
 def start_screen():
-    screen.fill('black')
-    font = pygame.font.Font(None, 50)
-    text_coord = 50
-
-    play_string_rendered = font.render('play', True, pygame.Color('black'))
-    play_intro_rect = play_string_rendered.get_rect()
-    play_intro_rect.x = 890
-    play_intro_rect.y = 400
-
-    rules_string_rendered = font.render('rules', True, pygame.Color('black'))
-    rules_intro_rect = play_string_rendered.get_rect()
-    rules_intro_rect.x = 890
-    rules_intro_rect.y = 450
-
-    leave_string_rendered = font.render('leave', True, pygame.Color('black'))
-    leave_intro_rect = play_string_rendered.get_rect()
-    leave_intro_rect.x = 890
-    leave_intro_rect.y = 500
-
+    start_game_btn = Button(200, 50, 850, 400, 'start', MenuSM.START)
+    leave_game_btn = Button(200, 50, 850, 470, 'leave', MenuSM.LEAVE)
     while True:
-        if play_intro_rect.x <= pygame.mouse.get_pos()[0] <= play_intro_rect.x + 140 and play_intro_rect.y <= \
-                pygame.mouse.get_pos()[1] <= play_intro_rect.y + 40:
-            pygame.draw.rect(screen, 'red', [play_intro_rect.x, play_intro_rect.y, 140, 40])
-        else:
-            pygame.draw.rect(screen, 'white', [play_intro_rect.x, play_intro_rect.y, 140, 40])
-        screen.blit(play_string_rendered, (play_intro_rect.x + 40, play_intro_rect.y))
-        if rules_intro_rect.x <= pygame.mouse.get_pos()[0] <= rules_intro_rect.x + 140 and rules_intro_rect.y <= \
-                pygame.mouse.get_pos()[1] <= rules_intro_rect.y + 40:
-            pygame.draw.rect(screen, 'red', [rules_intro_rect.x, rules_intro_rect.y, 140, 40])
-        else:
-            pygame.draw.rect(screen, 'white', [rules_intro_rect.x, rules_intro_rect.y, 140, 40])
-        screen.blit(rules_string_rendered, (rules_intro_rect.x + 30, rules_intro_rect.y))
-        if leave_intro_rect.x <= pygame.mouse.get_pos()[0] <= leave_intro_rect.x + 140 and leave_intro_rect.y <= \
-                pygame.mouse.get_pos()[1] <= leave_intro_rect.y + 40:
-            pygame.draw.rect(screen, 'red', [leave_intro_rect.x, leave_intro_rect.y, 140, 40])
-        else:
-            pygame.draw.rect(screen, 'white', [leave_intro_rect.x, leave_intro_rect.y, 140, 40])
-        screen.blit(leave_string_rendered, (leave_intro_rect.x + 30, leave_intro_rect.y))
-        pygame.display.update()
         for event in pygame.event.get():
             if event.type == pygame.QUIT:
                 terminate()
             elif event.type == pygame.KEYDOWN or \
                     event.type == pygame.MOUSEBUTTONDOWN:
                 return
+
+        if STATE != MenuSM.MENU:
+            return
+
+        start_game_btn.draw()
+        leave_game_btn.draw()
         pygame.display.flip()
         clock.tick(FPS)
 
@@ -297,6 +300,7 @@ def game():
     all_sprites = pygame.sprite.Group()
     font = pygame.font.Font(None, 30)
     player = Player('chr.png', WIDTH // 2, HEIGHT // 2, all_sprites)
+    start_screen()
     while True:
         for event in pygame.event.get():
             if event.type == pygame.QUIT or event.type == pygame.KEYDOWN and event.key == pygame.K_ESCAPE:
@@ -304,6 +308,9 @@ def game():
         screen.fill('red')
 
         all_sprites.update()
+
+        if STATE != MenuSM.START:
+            return
 
         if DEBUG:
             string_rendered = font.render(str(player.info), True, 'white')
@@ -317,6 +324,11 @@ def game():
 
 
 if __name__ == '__main__':
-    start_screen()
-    game()
-
+    while True:
+        match STATE:
+            case MenuSM.MENU:
+                start_screen()
+            case MenuSM.START:
+                game()
+            case MenuSM.LEAVE:
+                terminate()
