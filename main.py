@@ -19,9 +19,10 @@ class PlayerSM(Enum):
     ATTACK = 2
     SHIELD = 3
     ROLL = 4
+    DEAD = 5
 
 
-class Entity(pygame.sprite.Sprite):
+class Object(pygame.sprite.Sprite):
     def __init__(self, prev_img, x, y, all_sprites):
         super().__init__(all_sprites)
         self.img = self.load_image(prev_img)
@@ -35,7 +36,7 @@ class Entity(pygame.sprite.Sprite):
     def load_image(self, name):
         fullname = os.path.join('data', name)
         if not os.path.isfile(fullname):
-            fullname = os.path.join('data', 'notexture.png')
+            fullname = os.path.join(os.getcwd(), 'data', 'notexture.png')
         image = pygame.image.load(fullname)
         return image
 
@@ -59,8 +60,8 @@ class Entity(pygame.sprite.Sprite):
         self.image = frames[math.trunc(self.cur_frame)]
 
 
-class MovementObject(Entity):
-    def __init__(self, prev_img, x, y, all_sprites):
+class Entity(Object):
+    def __init__(self, prev_img, x, y, all_sprites, *inter_objs, obstacle_level=[]):
         super().__init__(prev_img, x, y, all_sprites)
         self.MAX_SPEED = 0
         self.ACCELERATION = 0
@@ -68,24 +69,36 @@ class MovementObject(Entity):
         self.GRAVITY = 0
         self.FALL_GRAVITY = 0
         self.BOUNCE_FORCE = 0
-        self.direction = pygame.math.Vector2(0, 0)
-        self.velocity = pygame.math.Vector2(0, 0)
+        self.MAX_HP = 0
+        self.hp = 0
+        self.direction = pygame.math.Vector2()
+        self.velocity = pygame.math.Vector2()
         self.bounce_vel = 0
         self.bounce_dist = 0
+        self.obstacle_level = obstacle_level
+        self.inter_objs = inter_objs
+        self.walk_hitbox = pygame.rect.Rect((self.rect.x, int(self.rect.y + self.rect.height * 0.8), self.rect.width,
+                                             (self.rect.height * 0.2)))
+        self.position_before_colliding = self.rect
 
     def update(self):
-        super().update()
-        self.move_towards()
-        self.bounce_towards()
+        self.position_before_colliding = self.rect
+        self.walk_hitbox = pygame.rect.Rect((self.rect.x, int(self.rect.y + self.rect.height * 0.8), self.rect.width,
+                                             (self.rect.height * 0.2)))
+        self.collision_obstacle()
+        self.collision_interact()
 
-    def move_towards(self):
+    def move_towards(self, max_speed, acceleration):
         if self.direction.length() != 0:
             direction = self.direction.normalize()
-            self.velocity += self.ACCELERATION * direction
-            if self.velocity.length() >= self.MAX_SPEED:
-                self.velocity.scale_to_length(self.MAX_SPEED)
+            self.velocity += acceleration * direction
+            if self.velocity.length() >= max_speed:
+                self.velocity.scale_to_length(max_speed)
         elif self.velocity.length() != 0:
-            self.velocity.scale_to_length(math.trunc(self.velocity.length() * self.FRICTION))
+            if math.trunc(self.velocity.length() * self.FRICTION) == 0:
+                self.velocity = pygame.math.Vector2()
+            else:
+                self.velocity.scale_to_length(math.trunc(self.velocity.length() * self.FRICTION))
         self.rect = self.rect.move(self.velocity.x, self.velocity.y)
 
     def bounce_towards(self):
@@ -99,100 +112,6 @@ class MovementObject(Entity):
         self.image = pygame.transform.rotate(self.image, math.sin(pygame.time.get_ticks() / speed) * angle)
         self.rect = self.image.get_rect().move(self.rect.x, self.rect.y)
 
-
-class Player(MovementObject):
-    def __init__(self, prev_img,  x, y, all_sprites):
-        # загрузка анимаций
-        self.idle_sheet = self.load_animation('chr-idle', 5)
-        self.walk_sheet = self.load_animation('chr-walk', 5)
-        self.attack_sheet = self.load_animation('chr-attack', 1)
-        self.shield_sheet = self.load_animation('chr-shield', 1)
-        self.roll_sheet = self.load_animation('chr-roll', 1)
-        # инит
-        super().__init__(prev_img, x, y, all_sprites)
-        self.state = PlayerSM.IDLE
-        self.MAX_SPEED = 8
-        self.ACCELERATION = 2
-        self.FRICTION = 0.9
-        self.GRAVITY = 0.9
-        self.FALL_GRAVITY = 0.75
-        self.BOUNCE_FORCE = 4
-        self.particles = pygame.sprite.Group()
-
-    def update(self):
-        match self.state:
-            case PlayerSM.IDLE:
-                self.move_towards()
-                self.attack()
-                self.shield()
-                self.roll()
-                self.idle_animation()
-            case PlayerSM.WALK:
-                self.move_towards()
-                self.attack()
-                self.shield()
-                self.roll()
-                self.walk_animation()
-            case PlayerSM.ROLL:
-                self.roll_animation()
-            case PlayerSM.ATTACK:
-                self.attack_animation()
-            case PlayerSM.SHIELD:
-                self.shield_animation()
-        self.count_frames += 1
-        self.draw_shadow()
-        self.particles.update()
-        self.particles.draw(screen)
-        self.info = self.determine_sheet()
-
-# функции состояний
-    def move_towards(self):
-        self.state = PlayerSM.WALK
-        self.calculate_direction()
-        self.bounce_towards()
-        super().move_towards()
-
-    def attack(self):
-        button = pygame.mouse.get_pressed()
-        if button[0]:
-            self.state = PlayerSM.ATTACK
-            self.cur_frame = 0
-
-    def shield(self):
-        button = pygame.mouse.get_pressed()
-        if button[2]:
-            self.state = PlayerSM.SHIELD
-            self.cur_frame = 0
-
-    def roll(self):
-        keys = pygame.key.get_pressed()
-        if keys[pygame.K_SPACE]:
-            self.state = PlayerSM.ROLL
-            self.cur_frame = 0
-
-    def calculate_direction(self):
-        key = pygame.key.get_pressed()
-        up = key[pygame.K_w] or key[pygame.K_UP]
-        down = key[pygame.K_s] or key[pygame.K_DOWN]
-        left = key[pygame.K_a] or key[pygame.K_LEFT]
-        right = key[pygame.K_d] or key[pygame.K_RIGHT]
-        self.direction = pygame.Vector2(right - left, down - up)
-        if self.direction.length() == 0:
-            self.state = PlayerSM.IDLE
-
-    def mouse_degree(self):
-        mouse_pos = pygame.mouse.get_pos()
-        pos = (mouse_pos[0] - self.rect.x - self.rect.width // 2, mouse_pos[1] - self.rect.y - self.rect.height // 2)
-        vector = pygame.math.Vector2(pos)
-        if vector.length() != 0:
-            vector = vector.normalize()
-        return math.atan2(vector.y, vector.x) * 180 / math.pi + (360 if vector.y < 0 else 0)
-
-    def draw_shadow(self):
-        if self.count_frames % 12 == 0:
-            self.particles.add(Shadow(self.image, self.rect.x, self.rect.y))
-
-# загрузка анимаций
     def load_animation(self, base, columns):
         sheets = []
         img = self.load_image(f'{base}-right.png')
@@ -208,6 +127,149 @@ class Player(MovementObject):
         img = self.load_image(f'{base}-right-up.png')
         sheets.append(self.cut_sheet(img, columns, 1))
         return sheets
+
+    def collision_obstacle(self):
+        for obstacle in self.obstacle_level:
+            if self.walk_hitbox.colliderect(obstacle):
+                self.velocity = pygame.math.Vector2()
+                self.rect = self.position_before_colliding
+
+    def collision_interact(self):
+        for inter in self.inter_objs:
+            for sprite in inter:
+                for obj in pygame.sprite.spritecollide(self, sprite, False, pygame.sprite.collide_mask):
+                    self.interact(obj)
+
+    def interact(self, obj):
+        pass
+
+
+class Enemy(Entity):
+    def __init__(self, prev_img, x, y, all_sprites, *inter_objs, obstacle_level=[]):
+        super().__init__(prev_img, x, y, all_sprites, *inter_objs, obstacle_level=[])
+        self.state = PlayerSM.IDLE
+        self.MAX_SPEED = 8
+        self.ACCELERATION = 2
+        self.FRICTION = 0.9
+        self.GRAVITY = 0.9
+        self.FALL_GRAVITY = 0.75
+        self.BOUNCE_FORCE = 4
+        self.MAX_HP = 10
+        self.hp = self.MAX_HP
+        self.particles = pygame.sprite.Group()
+
+    def update(self):
+        if self.hp <= 0:
+            self.kill()
+
+
+class Player(Entity):
+    def __init__(self, prev_img, x, y, all_sprites, *inter_objs, obstacle_level=[]):
+        # загрузка анимаций
+        self.idle_sheet = self.load_animation('chr-idle', 5)
+        self.walk_sheet = self.load_animation('chr-walk', 5)
+        self.attack_sheet = self.load_animation('chr-attack', 5)
+        self.shield_sheet = self.load_animation('chr-shield', 1)
+        self.roll_sheet = self.load_animation('chr-roll', 1)
+        dead_img = self.load_image(f'chr-dead')
+        self.dead_sheet = self.cut_sheet(dead_img, 1, 1)
+        # инит
+        super().__init__(prev_img, x, y, all_sprites, obstacle_level, inter_objs)
+        self.state = PlayerSM.IDLE
+        self.MAX_SPEED = 8
+        self.ACCELERATION = 2
+        self.FRICTION = 0.9
+        self.GRAVITY = 0.9
+        self.FALL_GRAVITY = 0.75
+        self.BOUNCE_FORCE = 4
+        self.MAX_HP = 10
+        self.hp = self.MAX_HP
+        self.particles = pygame.sprite.Group()
+
+    def update(self):
+        previous_state = self.state
+        self.position_before_colliding = self.rect
+        match self.state:
+            case PlayerSM.IDLE:
+                self.walk_towards()
+                self.attack()
+                self.shield()
+                self.roll()
+                self.idle_animation()
+            case PlayerSM.WALK:
+                self.walk_towards()
+                self.attack()
+                self.shield()
+                self.roll()
+                self.walk_animation()
+            case PlayerSM.ROLL:
+                self.roll_animation()
+            case PlayerSM.ATTACK:
+                self.attack_animation()
+            case PlayerSM.SHIELD:
+                self.shield_animation()
+            case PlayerSM.DEAD:
+                self.death_animation()
+        if previous_state != self.state:
+            self.cur_frame = 0
+        if self.hp <= 0:
+            self.state = PlayerSM.DEAD
+        self.walk_hitbox = pygame.rect.Rect((self.rect.x, int(self.rect.y + self.rect.height * 0.8), self.rect.width,
+                                             (self.rect.height * 0.2)))
+        self.count_frames += 1
+        self.particles.update()
+        self.particles.draw(screen)
+        self.info = self.velocity.length()
+        self.collision_obstacle()
+        self.collision_interact()
+
+# функции состояний
+    def walk_towards(self):
+        self.state = PlayerSM.WALK
+        self.calculate_direction()
+        self.move_towards(self.MAX_SPEED, self.ACCELERATION)
+        self.bounce_towards()
+
+    def attack(self):
+        button = pygame.mouse.get_pressed()
+        if button[0]:
+            self.direction = self.mouse_vector()
+            self.state = PlayerSM.ATTACK
+
+    def shield(self):
+        button = pygame.mouse.get_pressed()
+        if button[2]:
+            self.state = PlayerSM.SHIELD
+
+    def roll(self):
+        keys = pygame.key.get_pressed()
+        if keys[pygame.K_SPACE]:
+            self.state = PlayerSM.ROLL
+
+    def calculate_direction(self):
+        key = pygame.key.get_pressed()
+        up = key[pygame.K_w] or key[pygame.K_UP]
+        down = key[pygame.K_s] or key[pygame.K_DOWN]
+        left = key[pygame.K_a] or key[pygame.K_LEFT]
+        right = key[pygame.K_d] or key[pygame.K_RIGHT]
+        self.direction = pygame.Vector2(right - left, down - up)
+        if self.direction.length() == 0:
+            self.state = PlayerSM.IDLE
+
+    def mouse_vector(self):
+        mouse_pos = pygame.mouse.get_pos()
+        pos = (mouse_pos[0] - self.rect.x - self.rect.width // 2, mouse_pos[1] - self.rect.y - self.rect.height // 2)
+        vector = pygame.math.Vector2(pos)
+        if vector.length() != 0:
+            vector = vector.normalize()
+        return vector
+
+    def mouse_degree(self):
+        vector = self.mouse_vector()
+        return math.atan2(vector.y, vector.x) * 180 / math.pi + (360 if vector.y < 0 else 0)
+
+    def draw_shadow(self):
+        self.particles.add(Shadow(self.image, self.rect.x, self.rect.y))
 
 # анимации к состояниям
     def determine_sheet(self):
@@ -226,9 +288,14 @@ class Player(MovementObject):
             self.bounce_vel += self.BOUNCE_FORCE
 
     def attack_animation(self):
-        # код
-        self.state = PlayerSM.IDLE
-        self.cur_frame = 0
+        self.draw_shadow()
+        self.change_frame(self.attack_sheet[self.determine_sheet()], 0.1 if 2 <= self.cur_frame < 4 else 0.5)
+        if self.cur_frame < 3:
+            self.move_towards(8, 4)
+        else:
+            self.move_towards(2, 1)
+        if self.cur_frame == 4:
+            self.state = PlayerSM.IDLE
 
     def roll_animation(self):
         # код
@@ -240,18 +307,38 @@ class Player(MovementObject):
         self.state = PlayerSM.IDLE
         self.cur_frame = 0
 
+    def death_animation(self):
+        self.kill()
+
+    def interact(self, obj):
+        if self.state == PlayerSM.ATTACK:
+            obj.hp -= 1
+        self.velocity = pygame.math.Vector2()
+        self.rect = self.position_before_colliding
+
 
 class Shadow(pygame.sprite.Sprite):
     def __init__(self, img, x, y):
         super().__init__()
         self.image = img.copy()
         self.rect = self.image.get_rect().move(x, y)
+        self.color_rect = pygame.mask.from_surface(self.image)
+        # вариант 1
+        # self.color = pygame.Color(255, pygame.time.get_ticks() % 255, pygame.time.get_ticks() % 255, 128)
+        # вариант 2
+        # self.color = pygame.Color(pygame.time.get_ticks() % 255, 0, 0, 128)
+        # вариант 3
+        # hsv = self.color.hsva
+        # self.color.hsva = (pygame.time.get_ticks() % 360, 75, 100, 50)
+        # не вариант
+        self.color = pygame.Color(255, 0, 0, 128)
         self.image.set_alpha(128)
 
     def update(self):
         if self.image.get_alpha() - 4 == 0:
             self.kill()
         else:
+            screen.blit(self.color_rect.to_surface(unsetcolor=(0, 0, 0, 0), setcolor=self.color), self.rect)
             self.image.set_alpha(self.image.get_alpha() - 4)
 
 
@@ -260,68 +347,81 @@ def terminate():
     sys.exit()
 
 
-def start_screen():
-    screen.fill('black')
+class MenuSM(Enum):
+    MENU = 0
+    START = 1
+    RULES = 2
+    LEAVE = 3
+
+
+STATE = MenuSM.MENU
+
+
+def print_text(text, x, y):
     font = pygame.font.Font(None, 50)
-    text_coord = 50
+    need_text = font.render(text, True, pygame.Color('black'))
+    screen.blit(need_text, (x, y))
 
-    play_string_rendered = font.render('play', True, pygame.Color('black'))
-    play_intro_rect = play_string_rendered.get_rect()
-    play_intro_rect.x = 890
-    play_intro_rect.y = 400
 
-    rules_string_rendered = font.render('rules', True, pygame.Color('black'))
-    rules_intro_rect = play_string_rendered.get_rect()
-    rules_intro_rect.x = 890
-    rules_intro_rect.y = 450
+class Button:
+    def __init__(self, width, height, x, y, message, state):
+        self.width = width
+        self.height = height
+        self.inactive_color = 'white'
+        self.active_color = 'red'
+        self.x = x
+        self.y = y
+        self.message = message
+        self.state = state
 
-    leave_string_rendered = font.render('leave', True, pygame.Color('black'))
-    leave_intro_rect = play_string_rendered.get_rect()
-    leave_intro_rect.x = 890
-    leave_intro_rect.y = 500
+    def draw(self):
+        global STATE
+        pos = pygame.mouse.get_pos()
+        rect = pygame.draw.rect(screen, self.inactive_color, (self.x, self.y, self.width, self.height))
+        if rect.collidepoint(pos):
+            rect = pygame.draw.rect(screen, self.active_color, (self.x, self.y, self.width, self.height))
+        if pygame.mouse.get_pressed()[0] == 1 and rect.collidepoint(pos):
+            STATE = self.state
+        print_text(self.message, self.x + 60, self.y + 10)
 
+    def update(self):
+        pass
+
+
+def start_screen():
+    start_game_btn = Button(200, 50, 850, 400, 'start', MenuSM.START)
+    leave_game_btn = Button(200, 50, 850, 470, 'leave', MenuSM.LEAVE)
     while True:
-        if play_intro_rect.x <= pygame.mouse.get_pos()[0] <= play_intro_rect.x + 140 and play_intro_rect.y <= \
-                pygame.mouse.get_pos()[1] <= play_intro_rect.y + 40:
-            pygame.draw.rect(screen, 'red', [play_intro_rect.x, play_intro_rect.y, 140, 40])
-        else:
-            pygame.draw.rect(screen, 'white', [play_intro_rect.x, play_intro_rect.y, 140, 40])
-        screen.blit(play_string_rendered, (play_intro_rect.x + 40, play_intro_rect.y))
-        if rules_intro_rect.x <= pygame.mouse.get_pos()[0] <= rules_intro_rect.x + 140 and rules_intro_rect.y <= \
-                pygame.mouse.get_pos()[1] <= rules_intro_rect.y + 40:
-            pygame.draw.rect(screen, 'red', [rules_intro_rect.x, rules_intro_rect.y, 140, 40])
-        else:
-            pygame.draw.rect(screen, 'white', [rules_intro_rect.x, rules_intro_rect.y, 140, 40])
-        screen.blit(rules_string_rendered, (rules_intro_rect.x + 30, rules_intro_rect.y))
-        if leave_intro_rect.x <= pygame.mouse.get_pos()[0] <= leave_intro_rect.x + 140 and leave_intro_rect.y <= \
-                pygame.mouse.get_pos()[1] <= leave_intro_rect.y + 40:
-            pygame.draw.rect(screen, 'red', [leave_intro_rect.x, leave_intro_rect.y, 140, 40])
-        else:
-            pygame.draw.rect(screen, 'white', [leave_intro_rect.x, leave_intro_rect.y, 140, 40])
-        screen.blit(leave_string_rendered, (leave_intro_rect.x + 30, leave_intro_rect.y))
-        pygame.display.update()
         for event in pygame.event.get():
             if event.type == pygame.QUIT:
                 terminate()
             elif event.type == pygame.KEYDOWN or \
                     event.type == pygame.MOUSEBUTTONDOWN:
                 return
+
+        if STATE != MenuSM.MENU:
+            return
+
+        start_game_btn.draw()
+        leave_game_btn.draw()
         pygame.display.flip()
         clock.tick(FPS)
 
 
 def game():
     all_sprites = pygame.sprite.Group()
+    enemies = pygame.sprite.Group()
     font = pygame.font.Font(None, 30)
-    player = Player('chr.png', WIDTH // 2, HEIGHT // 2, all_sprites)
+    enemy = Enemy('', 500, 500, (enemies, all_sprites))
+    player = Player('chr.png', WIDTH // 2, HEIGHT // 2, all_sprites, enemies, obstacle_level=[])
     while True:
         for event in pygame.event.get():
             if event.type == pygame.QUIT or event.type == pygame.KEYDOWN and event.key == pygame.K_ESCAPE:
                 terminate()
-        screen.fill('red')
-
+        screen.fill('blue')
         all_sprites.update()
-
+        if STATE != MenuSM.START:
+            return
         if DEBUG:
             string_rendered = font.render(str(player.info), True, 'white')
             intro_rect = string_rendered.get_rect()
@@ -334,6 +434,11 @@ def game():
 
 
 if __name__ == '__main__':
-    start_screen()
-    game()
-
+    while True:
+        match STATE:
+            case MenuSM.MENU:
+                start_screen()
+            case MenuSM.START:
+                game()
+            case MenuSM.LEAVE:
+                terminate()
