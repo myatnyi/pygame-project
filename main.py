@@ -12,6 +12,7 @@ screen = pygame.display.set_mode(size)
 clock = pygame.time.Clock()
 DEBUG = True
 
+
 class Level:
     def __init__(self, filename):
         self.filename = filename
@@ -37,10 +38,6 @@ class StateMachine(Enum):
     SHIELD = 3
     ROLL = 4
     STUN = 5
-
-class BlebSM(Enum):
-    ATTACK = 0
-    STUN = 1
 
 
 class Object(pygame.sprite.Sprite):
@@ -421,20 +418,9 @@ class Player(Entity):
         self.kill()
 
     def collision_interact(self):
-        if self.velocity.x != 0:
-            for i in range(math.trunc(abs(self.velocity.x))):
-                for group in self.inter_objs:
-                    for inter in pygame.sprite.spritecollide(self, group, False, pygame.sprite.collide_mask):
-                        self.rect = self.rect.move(-(int(self.velocity.x / abs(self.velocity.x))), 0)
-                        self.walk_hitbox = self.walk_hitbox.move(-(int(self.velocity.x / abs(self.velocity.x))), 0)
-                        inter.interact()
-        if self.velocity.y != 0:
-            for i in range(math.trunc(abs(self.velocity.y))):
-                for group in self.inter_objs:
-                    for inter in pygame.sprite.spritecollide(self, group, False, pygame.sprite.collide_mask):
-                        self.rect = self.rect.move(0, -(int(self.velocity.y / abs(self.velocity.y))))
-                        self.walk_hitbox = self.walk_hitbox.move(0, -(int(self.velocity.y / abs(self.velocity.y))))
-                        inter.interact()
+        for group in self.inter_objs:
+            for inter in pygame.sprite.spritecollide(self, group, False, pygame.sprite.collide_mask):
+                inter.interact()
 
     def get_inter_objs(self, *inter_objs):
         self.inter_objs = inter_objs
@@ -461,6 +447,7 @@ class Shadow(pygame.sprite.Sprite):
         if self.image.get_alpha() - 4 == 0:
             self.kill()
         else:
+            screen.blit(self.color_rect.to_surface(unsetcolor=(0, 0, 0, 0), setcolor=self.color), self.rect)
             self.image.set_alpha(self.image.get_alpha() - 4)
 
 
@@ -468,17 +455,23 @@ def terminate():
     pygame.quit()
     sys.exit()
 
+
 class MenuSM(Enum):
     MENU = 0
     START = 1
     RULES = 2
     LEAVE = 3
 
+
 STATE = MenuSM.MENU
+
+
 def print_text(text, x, y):
     font = pygame.font.Font(None, 50)
     need_text = font.render(text, True, pygame.Color('black'))
     screen.blit(need_text, (x, y))
+
+
 class Button:
     def __init__(self, width, height, x, y, message, state):
         self.width = width
@@ -499,7 +492,6 @@ class Button:
         if pygame.mouse.get_pressed()[0] == 1 and rect.collidepoint(pos):
             STATE = self.state
         print_text(self.message, self.x + 60, self.y + 10)
-
 
 
 def start_screen():
@@ -526,16 +518,18 @@ def game():
     all_sprites = pygame.sprite.Group()
     font = pygame.font.Font(None, 30)
     enemies = pygame.sprite.Group()
-    font = pygame.font.Font(None, 30)
+    level = Level('level3.txt')
     player = Player('chr.png', WIDTH // 2, HEIGHT // 2, all_sprites)
+    bleb = Bleb('', 400, 400, all_sprites, player)
+    enemies.add(bleb)
+    player.get_inter_objs(enemies)
     while True:
         for event in pygame.event.get():
             if event.type == pygame.QUIT or event.type == pygame.KEYDOWN and event.key == pygame.K_ESCAPE:
                 terminate()
 
         screen.fill('red')
-        Level('level3.txt').draw_border(Level('level3.txt').read_file())
-
+        level.draw_border(level.read_file())
         all_sprites.update()
 
         if STATE != MenuSM.START:
