@@ -11,6 +11,25 @@ size = WIDTH, HEIGHT = 1920, 1080
 screen = pygame.display.set_mode(size)
 clock = pygame.time.Clock()
 DEBUG = True
+
+class Level:
+    def __init__(self, filename):
+        self.filename = filename
+
+    def read_file(self):
+        list_coords = []
+        with open(os.path.join(os.getcwd(), 'levels', self.filename), 'r') as file:
+            for line in file.readlines():
+                coords = [int(num) for num in line.split()]
+                list_coords.append(coords)
+
+        return list_coords
+
+    def draw_border(self, coords):
+        border = pygame.draw.lines(screen, 'white', True, coords, 10)
+        pygame.draw.polygon(screen, 'black', coords)
+
+
 class PlayerSM(Enum):
     IDLE = 0
     WALK = 1
@@ -288,8 +307,6 @@ class Button:
         if pygame.mouse.get_pressed()[0] == 1 and rect.collidepoint(pos):
             STATE = self.state
         print_text(self.message, self.x + 60, self.y + 10)
-    def update(self):
-        pass
 
 
 
@@ -322,7 +339,9 @@ def game():
         for event in pygame.event.get():
             if event.type == pygame.QUIT or event.type == pygame.KEYDOWN and event.key == pygame.K_ESCAPE:
                 terminate()
+
         screen.fill('red')
+        Level('level3.txt').draw_border(Level('level3.txt').read_file())
 
         all_sprites.update()
 
