@@ -13,13 +13,17 @@ clock = pygame.time.Clock()
 DEBUG = True
 
 
-class PlayerSM(Enum):
+class StateMachine(Enum):
     IDLE = 0
     WALK = 1
     ATTACK = 2
     SHIELD = 3
     ROLL = 4
-    DEAD = 5
+    STUN = 5
+
+class BlebSM(Enum):
+    ATTACK = 0
+    STUN = 1
 
 
 class Object(pygame.sprite.Sprite):
@@ -61,7 +65,7 @@ class Object(pygame.sprite.Sprite):
 
 
 class Entity(Object):
-    def __init__(self, prev_img, x, y, all_sprites, *inter_objs, obstacle_level=[]):
+    def __init__(self, prev_img, x, y, all_sprites, obstacle_level=[]):
         super().__init__(prev_img, x, y, all_sprites)
         self.MAX_SPEED = 0
         self.ACCELERATION = 0
@@ -70,23 +74,25 @@ class Entity(Object):
         self.FALL_GRAVITY = 0
         self.BOUNCE_FORCE = 0
         self.MAX_HP = 0
+        self.state = StateMachine.IDLE
         self.hp = 0
         self.direction = pygame.math.Vector2()
         self.velocity = pygame.math.Vector2()
         self.bounce_vel = 0
         self.bounce_dist = 0
+        self.resist_time = 0
         self.obstacle_level = obstacle_level
-        self.inter_objs = inter_objs
-        self.walk_hitbox = pygame.rect.Rect((self.rect.x, int(self.rect.y + self.rect.height * 0.8), self.rect.width,
-                                             (self.rect.height * 0.2)))
         self.position_before_colliding = self.rect
+        self.particles = pygame.sprite.Group()
+        self.walk_hitbox = pygame.Rect(self.rect.x, self.rect.y + self.rect.height * 0.7,
+                                       self.rect.width, self.rect.height * 0.3)
 
     def update(self):
-        self.position_before_colliding = self.rect
-        self.walk_hitbox = pygame.rect.Rect((self.rect.x, int(self.rect.y + self.rect.height * 0.8), self.rect.width,
-                                             (self.rect.height * 0.2)))
-        self.collision_obstacle()
         self.collision_interact()
+        if self.state == StateMachine.STUN:
+            self.blink()
+        self.particles.update()
+        self.particles.draw(screen)
 
     def move_towards(self, max_speed, acceleration):
         if self.direction.length() != 0:
@@ -99,7 +105,7 @@ class Entity(Object):
                 self.velocity = pygame.math.Vector2()
             else:
                 self.velocity.scale_to_length(math.trunc(self.velocity.length() * self.FRICTION))
-        self.rect = self.rect.move(self.velocity.x, self.velocity.y)
+        self.move_and_collide(self.velocity)
 
     def bounce_towards(self):
         self.rect = self.rect.move(0, self.bounce_dist)
@@ -110,7 +116,6 @@ class Entity(Object):
 
     def bounce_rotate(self, angle, speed):
         self.image = pygame.transform.rotate(self.image, math.sin(pygame.time.get_ticks() / speed) * angle)
-        self.rect = self.image.get_rect().move(self.rect.x, self.rect.y)
 
     def load_animation(self, base, columns):
         sheets = []
@@ -128,26 +133,53 @@ class Entity(Object):
         sheets.append(self.cut_sheet(img, columns, 1))
         return sheets
 
-    def collision_obstacle(self):
-        for obstacle in self.obstacle_level:
-            if self.walk_hitbox.colliderect(obstacle):
-                self.velocity = pygame.math.Vector2()
-                self.rect = self.position_before_colliding
+    def move_and_collide(self, velocity):
+        if velocity.x != 0:
+            for i in range(math.trunc(abs(velocity.x))):
+                self.rect = self.rect.move(int(velocity.x / abs(velocity.x)), 0)
+                self.walk_hitbox = self.walk_hitbox.move(int(velocity.x / abs(velocity.x)), 0)
+                for obstacle in self.obstacle_level:
+                    if self.walk_hitbox.colliderect(obstacle):
+                        self.rect = self.rect.move(-(int(velocity.x / abs(velocity.x))), 0)
+                        self.walk_hitbox = self.walk_hitbox.move(-(int(velocity.x / abs(velocity.x))), 0)
+        if velocity.y != 0:
+            for i in range(math.trunc(abs(velocity.y))):
+                self.rect = self.rect.move(0, int(velocity.y / abs(velocity.y)))
+                self.walk_hitbox = self.walk_hitbox.move(0, int(velocity.y / abs(velocity.y)))
+                for obstacle in self.obstacle_level:
+                    if self.walk_hitbox.colliderect(obstacle):
+                        self.rect = self.rect.move(0, -(int(velocity.y / abs(velocity.y))))
+                        self.walk_hitbox = self.walk_hitbox.move(0, -(int(velocity.y / abs(velocity.y))))
+        if DEBUG:
+            pygame.draw.rect(screen, 'blue', (self.walk_hitbox.x, self.walk_hitbox.y, self.walk_hitbox.width,
+                                              self.walk_hitbox.height))
 
     def collision_interact(self):
-        for inter in self.inter_objs:
-            for sprite in inter:
-                for obj in pygame.sprite.spritecollide(self, sprite, False, pygame.sprite.collide_mask):
-                    self.interact(obj)
-
-    def interact(self, obj):
         pass
+
+    def interact(self):
+        pass
+
+    def blink(self):
+        self.image.set_alpha(int(((math.sin(pygame.time.get_ticks() / 30) + 1) / 2) * 255))
+
+    def stop(self):
+        self.velocity = pygame.math.Vector2()
+        self.rect = self.position_before_colliding
+
+    def get_damaged(self, damage):
+        self.hp -= damage
+
+    def check_stun(self):
+        if pygame.time.get_ticks() - self.resist_time > 500:
+            self.resist_time = 0
+            self.state = StateMachine.IDLE
+            self.image.set_alpha(255)
 
 
 class Enemy(Entity):
-    def __init__(self, prev_img, x, y, all_sprites, *inter_objs, obstacle_level=[]):
-        super().__init__(prev_img, x, y, all_sprites, *inter_objs, obstacle_level=[])
-        self.state = PlayerSM.IDLE
+    def __init__(self, prev_img, x, y, all_sprites, target, obstacle_level=[]):
+        super().__init__(prev_img, x, y, all_sprites, obstacle_level)
         self.MAX_SPEED = 8
         self.ACCELERATION = 2
         self.FRICTION = 0.9
@@ -156,15 +188,80 @@ class Enemy(Entity):
         self.BOUNCE_FORCE = 4
         self.MAX_HP = 10
         self.hp = self.MAX_HP
-        self.particles = pygame.sprite.Group()
+        self.target = target
 
     def update(self):
+        self.position_before_colliding = self.rect
+        super().update()
         if self.hp <= 0:
             self.kill()
 
+    def calculate_target_vector(self):
+        vector = pygame.math.Vector2(self.target.rect.x - self.rect.x, self.target.rect.y - self.rect.y)
+        if vector.length() != 0:
+            vector = vector.normalize()
+        return vector
+
+    def frict(self):
+        if self.direction.length() != 0:
+            if round(self.direction.length() * self.FRICTION, 2) != 0:
+                self.direction.scale_to_length(self.direction.length() * self.FRICTION)
+            else:
+                self.direction = pygame.math.Vector2()
+
+
+class Bleb(Enemy):
+    def __init__(self, prev_img, x, y, all_sprites, target, obstacle_level=[]):
+        # загрузка анимаций
+        self.anim_sheet = self.load_animation('bleb', 5)
+        # инит
+        super().__init__(prev_img, x, y, all_sprites, target, obstacle_level)
+        self.MAX_SPEED = 6
+        self.ACCELERATION = 1
+        self.FRICTION = 0.9
+        self.GRAVITY = 0.9
+        self.FALL_GRAVITY = 0.75
+        self.BOUNCE_FORCE = 4
+        self.MAX_HP = 10
+        self.hp = self.MAX_HP
+
+    def update(self):
+        self.position_before_colliding = self.rect
+        match self.state:
+            case StateMachine.IDLE:
+                self.change_frame(self.anim_sheet[0 if self.calculate_target_vector().y > 0 else 1], 0.2)
+                self.count_frames += 1
+                self.direction = self.calculate_target_vector()
+            case StateMachine.STUN:
+                self.check_stun()
+        self.move_towards(self.MAX_SPEED, self.ACCELERATION)
+        if self.hp <= 0:
+            self.kill()
+        super().update()
+
+    def load_animation(self, base, columns):
+        sheets = []
+        img = self.load_image(f'{base}-down.png')
+        sheets.append(self.cut_sheet(img, columns, 1))
+        img = self.load_image(f'{base}-up.png')
+        sheets.append(self.cut_sheet(img, columns, 1))
+        return sheets
+
+    def interact(self):
+        if self.target.state == StateMachine.ATTACK and self.state != StateMachine.STUN:
+            self.get_damaged(1)
+            self.state = StateMachine.STUN
+            self.resist_time = pygame.time.get_ticks()
+            self.direction = pygame.math.Vector2(self.target.direction.x, self.target.direction.y)
+        elif self.target.state != StateMachine.ATTACK and self.target.state != StateMachine.STUN:
+            self.target.get_damaged(1)
+            self.target.state = StateMachine.STUN
+            self.target.direction = pygame.math.Vector2(self.direction.x, self.direction.y)
+            self.velocity = pygame.math.Vector2()
+
 
 class Player(Entity):
-    def __init__(self, prev_img, x, y, all_sprites, *inter_objs, obstacle_level=[]):
+    def __init__(self, prev_img, x, y, all_sprites, obstacle_level=[]):
         # загрузка анимаций
         self.idle_sheet = self.load_animation('chr-idle', 5)
         self.walk_sheet = self.load_animation('chr-walk', 5)
@@ -174,8 +271,8 @@ class Player(Entity):
         dead_img = self.load_image(f'chr-dead')
         self.dead_sheet = self.cut_sheet(dead_img, 1, 1)
         # инит
-        super().__init__(prev_img, x, y, all_sprites, obstacle_level, inter_objs)
-        self.state = PlayerSM.IDLE
+        super().__init__(prev_img, x, y, all_sprites, obstacle_level)
+        self.state = StateMachine.IDLE
         self.MAX_SPEED = 8
         self.ACCELERATION = 2
         self.FRICTION = 0.9
@@ -184,48 +281,44 @@ class Player(Entity):
         self.BOUNCE_FORCE = 4
         self.MAX_HP = 10
         self.hp = self.MAX_HP
-        self.particles = pygame.sprite.Group()
+        self.inter_objs = []
 
     def update(self):
         previous_state = self.state
         self.position_before_colliding = self.rect
         match self.state:
-            case PlayerSM.IDLE:
+            case StateMachine.IDLE:
                 self.walk_towards()
                 self.attack()
                 self.shield()
                 self.roll()
                 self.idle_animation()
-            case PlayerSM.WALK:
+            case StateMachine.WALK:
                 self.walk_towards()
                 self.attack()
                 self.shield()
                 self.roll()
                 self.walk_animation()
-            case PlayerSM.ROLL:
+            case StateMachine.ROLL:
                 self.roll_animation()
-            case PlayerSM.ATTACK:
+            case StateMachine.ATTACK:
                 self.attack_animation()
-            case PlayerSM.SHIELD:
+            case StateMachine.SHIELD:
                 self.shield_animation()
-            case PlayerSM.DEAD:
-                self.death_animation()
+            case StateMachine.STUN:
+                self.check_stun()
+                self.move_towards(200, 20)
         if previous_state != self.state:
             self.cur_frame = 0
         if self.hp <= 0:
-            self.state = PlayerSM.DEAD
-        self.walk_hitbox = pygame.rect.Rect((self.rect.x, int(self.rect.y + self.rect.height * 0.8), self.rect.width,
-                                             (self.rect.height * 0.2)))
+            self.death_animation()
         self.count_frames += 1
-        self.particles.update()
-        self.particles.draw(screen)
-        self.info = self.velocity.length()
-        self.collision_obstacle()
-        self.collision_interact()
+        super().update()
+        self.info = self.hp
 
 # функции состояний
     def walk_towards(self):
-        self.state = PlayerSM.WALK
+        self.state = StateMachine.WALK
         self.calculate_direction()
         self.move_towards(self.MAX_SPEED, self.ACCELERATION)
         self.bounce_towards()
@@ -234,17 +327,17 @@ class Player(Entity):
         button = pygame.mouse.get_pressed()
         if button[0]:
             self.direction = self.mouse_vector()
-            self.state = PlayerSM.ATTACK
+            self.state = StateMachine.ATTACK
 
     def shield(self):
         button = pygame.mouse.get_pressed()
         if button[2]:
-            self.state = PlayerSM.SHIELD
+            self.state = StateMachine.SHIELD
 
     def roll(self):
         keys = pygame.key.get_pressed()
         if keys[pygame.K_SPACE]:
-            self.state = PlayerSM.ROLL
+            self.state = StateMachine.ROLL
 
     def calculate_direction(self):
         key = pygame.key.get_pressed()
@@ -254,7 +347,7 @@ class Player(Entity):
         right = key[pygame.K_d] or key[pygame.K_RIGHT]
         self.direction = pygame.Vector2(right - left, down - up)
         if self.direction.length() == 0:
-            self.state = PlayerSM.IDLE
+            self.state = StateMachine.IDLE
 
     def mouse_vector(self):
         mouse_pos = pygame.mouse.get_pos()
@@ -295,26 +388,39 @@ class Player(Entity):
         else:
             self.move_towards(2, 1)
         if self.cur_frame == 4:
-            self.state = PlayerSM.IDLE
+            self.state = StateMachine.IDLE
 
     def roll_animation(self):
         # код
-        self.state = PlayerSM.IDLE
+        self.state = StateMachine.IDLE
         self.cur_frame = 0
 
     def shield_animation(self):
         # код
-        self.state = PlayerSM.IDLE
+        self.state = StateMachine.IDLE
         self.cur_frame = 0
 
     def death_animation(self):
         self.kill()
 
-    def interact(self, obj):
-        if self.state == PlayerSM.ATTACK:
-            obj.hp -= 1
-        self.velocity = pygame.math.Vector2()
-        self.rect = self.position_before_colliding
+    def collision_interact(self):
+        if self.velocity.x != 0:
+            for i in range(math.trunc(abs(self.velocity.x))):
+                for group in self.inter_objs:
+                    for inter in pygame.sprite.spritecollide(self, group, False, pygame.sprite.collide_mask):
+                        self.rect = self.rect.move(-(int(self.velocity.x / abs(self.velocity.x))), 0)
+                        self.walk_hitbox = self.walk_hitbox.move(-(int(self.velocity.x / abs(self.velocity.x))), 0)
+                        inter.interact()
+        if self.velocity.y != 0:
+            for i in range(math.trunc(abs(self.velocity.y))):
+                for group in self.inter_objs:
+                    for inter in pygame.sprite.spritecollide(self, group, False, pygame.sprite.collide_mask):
+                        self.rect = self.rect.move(0, -(int(self.velocity.y / abs(self.velocity.y))))
+                        self.walk_hitbox = self.walk_hitbox.move(0, -(int(self.velocity.y / abs(self.velocity.y))))
+                        inter.interact()
+
+    def get_inter_objs(self, *inter_objs):
+        self.inter_objs = inter_objs
 
 
 class Shadow(pygame.sprite.Sprite):
@@ -412,21 +518,33 @@ def game():
     all_sprites = pygame.sprite.Group()
     enemies = pygame.sprite.Group()
     font = pygame.font.Font(None, 30)
-    enemy = Enemy('', 500, 500, (enemies, all_sprites))
-    player = Player('chr.png', WIDTH // 2, HEIGHT // 2, all_sprites, enemies, obstacle_level=[])
+    borders = [pygame.draw.line(screen, 'white', (50, 50), (1870, 50), 5),
+               pygame.draw.line(screen, 'white', (1870, 50), (1870, 1030), 5),
+               pygame.draw.line(screen, 'white', (1870, 1030), (50, 1030), 5),
+               pygame.draw.line(screen, 'white', (50, 1030), (50, 50), 5),
+               pygame.draw.line(screen, 'white', (400, 100), (400, 980), 5)]
+    player = Player('chr.png', WIDTH // 2, HEIGHT // 2, all_sprites, obstacle_level=borders)
+    bleb = Bleb('', 600, 600, all_sprites, player, borders)
+    enemies.add(bleb)
+    player.get_inter_objs(enemies)
     while True:
         for event in pygame.event.get():
             if event.type == pygame.QUIT or event.type == pygame.KEYDOWN and event.key == pygame.K_ESCAPE:
                 terminate()
-        screen.fill('blue')
+        screen.fill('black')
         all_sprites.update()
+        borders = [pygame.draw.line(screen, 'white', (50, 50), (1870, 50), 5),
+                   pygame.draw.line(screen, 'white', (1870, 50), (1870, 1030), 5),
+                   pygame.draw.line(screen, 'white', (1870, 1030), (50, 1030), 5),
+                   pygame.draw.line(screen, 'white', (50, 1030), (50, 50), 5),
+                   pygame.draw.line(screen, 'white', (400, 100), (400, 980), 5)]
         if STATE != MenuSM.START:
             return
         if DEBUG:
             string_rendered = font.render(str(player.info), True, 'white')
             intro_rect = string_rendered.get_rect()
-            intro_rect.top = player.rect.y + 50
-            intro_rect.x = player.rect.x + player.rect.width // 2 - intro_rect.width // 2
+            intro_rect.top =0
+            intro_rect.x = 0
             screen.blit(string_rendered, intro_rect)
         all_sprites.draw(screen)
         pygame.display.flip()
