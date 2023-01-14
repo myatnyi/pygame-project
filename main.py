@@ -10,7 +10,7 @@ pygame.display.set_caption('Жока и бока')
 size = WIDTH, HEIGHT = 1920, 1080
 screen = pygame.display.set_mode(size)
 clock = pygame.time.Clock()
-DEBUG = True
+DEBUG = False
 
 
 class Level:
@@ -18,19 +18,27 @@ class Level:
         self.filename = filename
 
     def read_file(self):
-        list_coords = []
+        lines = []
         with open(os.path.join(os.getcwd(), 'levels', self.filename), 'r') as file:
-            for line in file.readlines():
-                coords = [int(num) for num in line.split()]
-                list_coords.append(coords)
+            list_coords = []
+            with open(os.path.join(os.getcwd(), 'levels', self.filename), 'r') as file:
+                for line in file.readlines():
+                    coords = [int(num) for num in line.split()]
+                    list_coords.append(coords)
+                for i in range(len(list_coords)):
+                    if list_coords[i] == list_coords[-1]:
+                        lines.append(pygame.draw.line(screen, 'white', list_coords[i], list_coords[0], 10))
+                    else:
+                        lines.append(pygame.draw.line(screen, 'white', list_coords[i], list_coords[i + 1], 10))
 
-        return list_coords
+            return list_coords, lines
+
 
     def draw_border(self, coords):
         border = pygame.draw.lines(screen, 'white', True, coords, 10)
         pygame.draw.polygon(screen, 'black', coords)
 
-
+Level('level1.txt').read_file()
 class StateMachine(Enum):
     IDLE = 0
     WALK = 1
@@ -529,7 +537,7 @@ def game():
                 terminate()
 
         screen.fill('red')
-        level.draw_border(level.read_file())
+        level.draw_border(level.read_file()[0])
         all_sprites.update()
 
         if STATE != MenuSM.START:
