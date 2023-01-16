@@ -2,6 +2,7 @@ import sys
 from Player import *
 from Enemies import *
 from Levels import *
+from UI import *
 
 FPS = 60
 pygame.init()
@@ -87,6 +88,7 @@ def game():
         screen.fill('red')
         level.draw_border(level.read_file()[0])
         all_sprites.update()
+        Heart(player)
 
         if STATE != MenuSM.START:
             return
@@ -98,6 +100,7 @@ def game():
             intro_rect.x = player.rect.x + player.rect.width // 2 - intro_rect.width // 2
             screen.blit(string_rendered, intro_rect)
         all_sprites.draw(screen)
+        Heart(player).draw_hp_line()
         pygame.display.flip()
         clock.tick(FPS)
 
