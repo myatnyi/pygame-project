@@ -65,6 +65,11 @@ def sc():
             elif event.type == pygame.MOUSEBUTTONDOWN and event.button == 1 and not end_painting:
                 points.append([pos0, pos1])
                 pos0 = pos1
+            if event.type == pygame.KEYDOWN:
+                if event.key == pygame.K_z and pygame.key.get_mods() and pygame.KMOD_CTRL:
+                    if points:
+                        pos0 = points[-2][1] if len(points) > 1 else points[0][0]
+                        points.pop()
         screen.fill('black')
         for i in range(offset, WIDTH - offset + 1, offset):
             pygame.draw.line(grid, 'white', (i, offset), (i, HEIGHT - offset), 2)
@@ -97,7 +102,7 @@ def sc():
             elif pos1[1] > HEIGHT - offset:
                 pos1[1] = HEIGHT - offset
             pos0 = [round(pos0[0] / offset) * offset, round(pos0[1] / offset) * offset]
-            pos1 = [round(pos1[0] / offset) * offset, round(pos1[1] / offset) * offset]
+            pos1 = [round(pos1[0] / offset) * offset, pos0[1]] if abs(pos1[0] - pos0[0]) > abs(pos1[1] - pos0[1]) else [pos0[0], round(pos1[1] / offset) * offset]
             pygame.draw.line(screen, 'white', pos0, pos1, 3)
             font = pygame.font.Font(None, 30)
             text = font.render(str(pos1), True, pygame.Color('white'))
