@@ -21,6 +21,7 @@ class Player(Entity):
         self.FALL_GRAVITY = 0.75
         self.BOUNCE_FORCE = 4
         self.MAX_HP = 10
+        self.STUN_TIME = 100
         self.hp = self.MAX_HP
         self.inter_objs = []
 
@@ -48,7 +49,7 @@ class Player(Entity):
                 self.shield_animation()
             case StateMachine.STUN:
                 self.check_stun()
-                self.move_towards(200, 20)
+                self.move_towards(15, 5)
         if previous_state != self.state:
             self.cur_frame = 0
         if self.hp <= 0:
@@ -102,8 +103,6 @@ class Player(Entity):
         vector = self.mouse_vector()
         return math.atan2(vector.y, vector.x) * 180 / math.pi + (360 if vector.y < 0 else 0)
 
-    def draw_shadow(self):
-        self.particles.add(Shadow(self.screen, self.image, self.rect.x, self.rect.y))
 
 # анимации к состояниям
     def determine_sheet(self):
@@ -122,7 +121,7 @@ class Player(Entity):
             self.bounce_vel += self.BOUNCE_FORCE
 
     def attack_animation(self):
-        self.draw_shadow()
+        self.draw_shadow(self.image, self.rect, (255, 0, 0, 128), 4)
         self.change_frame(self.attack_sheet[self.determine_sheet()], 0.1 if 2 <= self.cur_frame < 4 else 0.5)
         if self.cur_frame < 3:
             self.move_towards(8, 4)

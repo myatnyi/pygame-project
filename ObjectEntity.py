@@ -14,6 +14,32 @@ class StateMachine(Enum):
     STUN = 5
 
 
+class Shadow(pygame.sprite.Sprite):
+    def __init__(self, screen, img, x, y, color, time):
+        super().__init__()
+        self.image = img.copy()
+        self.rect = self.image.get_rect().move(x, y)
+        self.color_rect = pygame.mask.from_surface(self.image)
+        self.screen = screen
+        self.time = time
+        # вариант 1
+        # self.color = pygame.Color(255, pygame.time.get_ticks() % 255, pygame.time.get_ticks() % 255, 128)
+        # вариант 2
+        # self.color = pygame.Color(pygame.time.get_ticks() % 255, 0, 0, 128)
+        # вариант 3
+        # hsv = self.color.hsva
+        # self.color.hsva = (pygame.time.get_ticks() % 360, 75, 100, 50)
+        # не вариант
+        self.color = pygame.Color(color)
+        self.image.set_alpha(128)
+
+    def update(self):
+        if self.image.get_alpha() - 4 <= 0:
+            self.kill()
+        else:
+            self.screen.blit(self.color_rect.to_surface(unsetcolor=(0, 0, 0, 0), setcolor=self.color), self.rect)
+            self.image.set_alpha(self.image.get_alpha() - self.time)
+
 class Object(pygame.sprite.Sprite):
     def __init__(self, screen, prev_img, x, y, all_sprites):
         super().__init__(all_sprites)
@@ -63,6 +89,7 @@ class Entity(Object):
         self.FALL_GRAVITY = 0
         self.BOUNCE_FORCE = 0
         self.MAX_HP = 0
+        self.STUN_TIME = 500
         self.state = StateMachine.IDLE
         self.hp = 0
         self.direction = pygame.math.Vector2()
@@ -156,33 +183,10 @@ class Entity(Object):
         self.hp -= damage
 
     def check_stun(self):
-        if pygame.time.get_ticks() - self.resist_time > 500:
-            self.resist_time = 0
+        if pygame.time.get_ticks() - self.resist_time > self.STUN_TIME and self.state == StateMachine.STUN:
             self.state = StateMachine.IDLE
             self.image.set_alpha(255)
 
+    def draw_shadow(self, surf, rect, color, time):
+        self.particles.add(Shadow(self.screen, surf, rect[0], rect[1], color, time))
 
-class Shadow(pygame.sprite.Sprite):
-    def __init__(self, screen, img, x, y):
-        super().__init__()
-        self.image = img.copy()
-        self.rect = self.image.get_rect().move(x, y)
-        self.color_rect = pygame.mask.from_surface(self.image)
-        self.screen = screen
-        # вариант 1
-        # self.color = pygame.Color(255, pygame.time.get_ticks() % 255, pygame.time.get_ticks() % 255, 128)
-        # вариант 2
-        # self.color = pygame.Color(pygame.time.get_ticks() % 255, 0, 0, 128)
-        # вариант 3
-        # hsv = self.color.hsva
-        # self.color.hsva = (pygame.time.get_ticks() % 360, 75, 100, 50)
-        # не вариант
-        self.color = pygame.Color(255, 0, 0, 128)
-        self.image.set_alpha(128)
-
-    def update(self):
-        if self.image.get_alpha() - 4 == 0:
-            self.kill()
-        else:
-            self.screen.blit(self.color_rect.to_surface(unsetcolor=(0, 0, 0, 0), setcolor=self.color), self.rect)
-            self.image.set_alpha(self.image.get_alpha() - 4)

@@ -51,6 +51,7 @@ def print_text(text, x, y):
     need_text = font.render(text, True, pygame.Color('black'))
     screen.blit(need_text, (x, y))
 
+
 def start_screen():
     start_game_btn = Button(200, 50, 850, 400, 'start', MenuSM.START)
     leave_game_btn = Button(200, 50, 850, 470, 'leave', MenuSM.LEAVE)
@@ -77,7 +78,7 @@ def game():
     enemies = pygame.sprite.Group()
     level = Level(screen, 'level1.txt')
     player = Player(screen, 'chr.png', WIDTH // 2, HEIGHT // 2, all_sprites, obstacle_level=level.read_file()[1])
-    bleb = Bleb(screen, '', 400, 400, all_sprites, player, obstacle_level=level.read_file()[1])
+    bleb = Bleb(screen, 'bleb.png', 400, 400, all_sprites, player, obstacle_level=level.read_file()[1])
     enemies.add(bleb)
     player.get_inter_objs(enemies)
     while True:

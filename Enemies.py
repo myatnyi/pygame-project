@@ -1,3 +1,5 @@
+import pygame
+
 from ObjectEntity import *
 
 
@@ -13,6 +15,8 @@ class Enemy(Entity):
         self.MAX_HP = 10
         self.hp = self.MAX_HP
         self.target = target
+        self.CONTACT_DAMAGE = 1
+        self.STUN_TIME = 500
 
     def update(self):
         self.position_before_colliding = self.rect
@@ -33,6 +37,18 @@ class Enemy(Entity):
             else:
                 self.direction = pygame.math.Vector2()
 
+    def in_front_of_target(self):
+        rect = pygame.Rect(self.rect.center, (1, 1))
+        vec = self.calculate_target_vector()
+        len_vec = pygame.math.Vector2(self.target.rect.centerx - self.rect.centerx,
+                                      self.target.rect.centery - self.rect.centery)
+        for _ in range(int(len_vec.length())):
+            rect = rect.move(vec)
+            for obstacle in self.obstacle_level:
+                if rect.colliderect(obstacle):
+                    return False
+        return True
+
 
 class Bleb(Enemy):
     def __init__(self, screen, prev_img, x, y, all_sprites, target, obstacle_level=[]):
@@ -47,7 +63,16 @@ class Bleb(Enemy):
         self.FALL_GRAVITY = 0.75
         self.BOUNCE_FORCE = 4
         self.MAX_HP = 10
+        self.CONTACT_DAMAGE = 2
+        self.ATTACK_DAMAGE = 5
         self.hp = self.MAX_HP
+        self.STUN_TIME = 500
+        self.regen_time = 5000
+        self.charge_time = 500
+        self.use_time = 0
+        self.used_time = 0
+        self.attack_time = 1000
+        self.regened = True
 
     def update(self):
         self.position_before_colliding = self.rect
@@ -56,9 +81,14 @@ class Bleb(Enemy):
                 self.change_frame(self.anim_sheet[0 if self.calculate_target_vector().y > 0 else 1], 0.2)
                 self.count_frames += 1
                 self.direction = self.calculate_target_vector()
+                self.walk_anim()
+                self.attack()
+                self.move_towards(self.MAX_SPEED, self.ACCELERATION)
+            case StateMachine.ATTACK:
+                self.charge_and_attack()
             case StateMachine.STUN:
                 self.check_stun()
-        self.move_towards(self.MAX_SPEED, self.ACCELERATION)
+                self.move_towards(self.MAX_SPEED, self.ACCELERATION)
         if self.hp <= 0:
             self.kill()
         super().update()
@@ -76,12 +106,41 @@ class Bleb(Enemy):
             self.get_damaged(1)
             self.state = StateMachine.STUN
             self.resist_time = pygame.time.get_ticks()
-            self.direction = pygame.math.Vector2(self.target.direction.x, self.target.direction.y)
+            self.direction = self.target.direction
             self.target.stop()
         elif self.target.state != StateMachine.ATTACK and self.target.state != StateMachine.STUN \
                 and self.state != StateMachine.STUN:
-            self.target.get_damaged(1)
-            print(self.target.state)
+            self.target.get_damaged(self.ATTACK_DAMAGE if self.state.ATTACK else self.CONTACT_DAMAGE)
             self.target.state = StateMachine.STUN
-            self.target.direction = pygame.math.Vector2(self.direction.x, self.direction.y)
+            if pygame.time.get_ticks() < self.target.resist_time + self.target.STUN_TIME + 20:
+                self.target.direction = -self.direction
+            else:
+                self.target.direction = self.direction
+            self.target.resist_time = pygame.time.get_ticks()
             self.velocity = pygame.math.Vector2()
+
+    def walk_anim(self):
+        self.image = pygame.transform.scale_by(self.image, (1, 1 + math.sin(pygame.time.get_ticks() / 100) * 0.2))
+
+    def attack(self):
+        self.regen_attack()
+        if self.regened and self.in_front_of_target():
+            self.state = StateMachine.ATTACK
+            self.use_time = pygame.time.get_ticks()
+            self.regened = False
+            self.stop()
+
+    def charge_and_attack(self):
+        if self.use_time + self.charge_time > pygame.time.get_ticks():
+            self.change_frame(self.anim_sheet[0 if self.calculate_target_vector().y > 0 else 1], 0.2)
+            self.direction = self.calculate_target_vector()
+        elif self.use_time + self.attack_time > pygame.time.get_ticks():
+            self.move_towards(40, 20)
+            self.draw_shadow(self.load_image('bubble.png'), self.rect.center, (0, 0, 0, 0), 3)
+        else:
+            self.state = StateMachine.IDLE
+            self.used_time = pygame.time.get_ticks()
+
+    def regen_attack(self):
+        if pygame.time.get_ticks() > self.used_time + self.regen_time:
+            self.regened = True
