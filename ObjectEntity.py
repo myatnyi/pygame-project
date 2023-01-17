@@ -2,16 +2,7 @@ import pygame
 import os
 import pathlib
 import math
-from enum import Enum
-
-
-class StateMachine(Enum):
-    IDLE = 0
-    WALK = 1
-    ATTACK = 2
-    SHIELD = 3
-    ROLL = 4
-    STUN = 5
+from statemachine import *
 
 
 class Shadow(pygame.sprite.Sprite):
@@ -39,6 +30,7 @@ class Shadow(pygame.sprite.Sprite):
         else:
             self.screen.blit(self.color_rect.to_surface(unsetcolor=(0, 0, 0, 0), setcolor=self.color), self.rect)
             self.image.set_alpha(self.image.get_alpha() - self.time)
+
 
 class Object(pygame.sprite.Sprite):
     def __init__(self, screen, prev_img, x, y, all_sprites):

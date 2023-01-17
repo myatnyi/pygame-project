@@ -1,4 +1,5 @@
 from ObjectEntity import *
+from Abilities import *
 
 
 class Player(Entity):
@@ -22,6 +23,7 @@ class Player(Entity):
         self.BOUNCE_FORCE = 4
         self.MAX_HP = 10
         self.STUN_TIME = 100
+        self.WEAPON = Weapon(self)
         self.hp = self.MAX_HP
         self.inter_objs = []
 
@@ -33,16 +35,12 @@ class Player(Entity):
                 self.walk_towards()
                 self.attack()
                 self.shield()
-                self.roll()
                 self.idle_animation()
             case StateMachine.WALK:
                 self.walk_towards()
                 self.attack()
                 self.shield()
-                self.roll()
                 self.walk_animation()
-            case StateMachine.ROLL:
-                self.roll_animation()
             case StateMachine.ATTACK:
                 self.attack_animation()
             case StateMachine.SHIELD:
@@ -56,7 +54,7 @@ class Player(Entity):
             self.death_animation()
         self.count_frames += 1
         super().update()
-        self.info = self.state
+        self.info = pygame.time.get_ticks()
 
 # функции состояний
     def walk_towards(self):
@@ -75,11 +73,6 @@ class Player(Entity):
         button = pygame.mouse.get_pressed()
         if button[2]:
             self.state = StateMachine.SHIELD
-
-    def roll(self):
-        keys = pygame.key.get_pressed()
-        if keys[pygame.K_SPACE]:
-            self.state = StateMachine.ROLL
 
     def calculate_direction(self):
         key = pygame.key.get_pressed()
@@ -103,7 +96,6 @@ class Player(Entity):
         vector = self.mouse_vector()
         return math.atan2(vector.y, vector.x) * 180 / math.pi + (360 if vector.y < 0 else 0)
 
-
 # анимации к состояниям
     def determine_sheet(self):
         ranges = [range(0, 60), range(60, 120), range(120, 180), range(180, 240), range(240, 300), range(30, 360)]
@@ -121,19 +113,7 @@ class Player(Entity):
             self.bounce_vel += self.BOUNCE_FORCE
 
     def attack_animation(self):
-        self.draw_shadow(self.image, self.rect, (255, 0, 0, 128), 4)
-        self.change_frame(self.attack_sheet[self.determine_sheet()], 0.1 if 2 <= self.cur_frame < 4 else 0.5)
-        if self.cur_frame < 3:
-            self.move_towards(8, 4)
-        else:
-            self.move_towards(2, 1)
-        if self.cur_frame == 4:
-            self.state = StateMachine.IDLE
-
-    def roll_animation(self):
-        # код
-        self.state = StateMachine.IDLE
-        self.cur_frame = 0
+        self.WEAPON.attack()
 
     def shield_animation(self):
         # код
