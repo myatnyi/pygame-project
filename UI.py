@@ -2,13 +2,13 @@ from main import *
 from Player import *
 
 class Heart(pygame.sprite.Sprite):
-    def __init__(self, player):
+    def __init__(self, player, x, y):
         super().__init__()
         self.heart = pygame.sprite.Sprite()
         self.heart.image = pygame.image.load(os.path.join('data', 'heart.png'))
         self.heart.rect = self.heart.image.get_rect()
-        self.heart.rect.x = 20
-        self.heart.rect.y = 7
+        self.heart.rect.x = x
+        self.heart.rect.y = y
         hearts = pygame.sprite.Group()
         self.player = player
         screen.blit(self.heart.image, self.heart.rect)
