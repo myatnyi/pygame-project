@@ -52,16 +52,15 @@ class Button:
 
 
 def print_text(text, x, y, color, size):
-    font = pygame.font.Font(None, size)
-    pygame.font.Font('cool_font.ttf', 36)
+    font = pygame.font.Font(os.path.join(pathlib.Path(__file__).parent.resolve(), 'data', 'cool_font.ttf'), size)
     need_text = font.render(text, True, pygame.Color(color))
     screen.blit(need_text, (x, y))
 
 
 def start_screen():
-    start_game_btn = Button(200, 50, 850, 400, 'start', MenuSM.START, 65)
-    leave_game_btn = Button(200, 50, 850, 470, 'leave', MenuSM.LEAVE, 60)
-    print_text('start game!', 800, 320, 'white', 80)
+    start_game_btn = Button(200, 50, 850, 400, 'start', MenuSM.START, 30)
+    leave_game_btn = Button(200, 50, 850, 470, 'leave', MenuSM.LEAVE, 30)
+    print_text('start game!', 800, 320, 'white', 50)
     while True:
         for event in pygame.event.get():
             if event.type == pygame.QUIT:
@@ -84,8 +83,8 @@ TIME = 0
 SCORE = 0
 def final_screen():
     screen.fill('black')
-    restart_game_btn = Button(200, 50, 850, 500, 'restart', MenuSM.START, 53)
-    leave_game_btn = Button(200, 50, 850, 570, 'leave', MenuSM.LEAVE, 60)
+    restart_game_btn = Button(200, 50, 850, 500, 'restart', MenuSM.START, 30)
+    leave_game_btn = Button(200, 50, 850, 570, 'leave', MenuSM.LEAVE, 30)
     print_text('you lose(', 800, 150, 'white', 120)
     print_text(f'kills: {KILLS}', 840, 260, 'white', 70)
     print_text(f'time: {TIME}', 840, 320, 'white', 70)
@@ -110,7 +109,7 @@ def final_screen():
 def game():
     global STATE
     all_sprites = pygame.sprite.Group()
-    font = pygame.font.Font(None, 30)
+    font = pygame.font.Font(os.path.join(pathlib.Path(__file__).parent.resolve(), 'data', 'cool_font.ttf'), 30)
     enemies = pygame.sprite.Group()
     level = Level(screen, 'level1.txt')
     player = Player(screen, 'chr.png', WIDTH // 2, HEIGHT // 2, all_sprites, obstacle_level=level.read_file()[1])
