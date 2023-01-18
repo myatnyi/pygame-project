@@ -8,8 +8,7 @@ class Player(Entity):
         self.idle_sheet = self.load_animation('chr-idle', 5)
         self.walk_sheet = self.load_animation('chr-walk', 5)
         self.attack_sheet = self.load_animation('chr-attack', 5)
-        self.shield_sheet = self.load_animation('chr-shield', 1)
-        self.roll_sheet = self.load_animation('chr-roll', 1)
+        self.shield_sheet = self.load_animation('chr-shield', 5)
         dead_img = self.load_image(f'chr-dead')
         self.dead_sheet = self.cut_sheet(dead_img, 1, 1)
         # инит
@@ -23,7 +22,8 @@ class Player(Entity):
         self.BOUNCE_FORCE = 4
         self.MAX_HP = 10
         self.STUN_TIME = 100
-        self.WEAPON = Weapon(self)
+        self.WEAPON = Sword(self)
+        self.SHIELD = Shield(self)
         self.hp = self.MAX_HP
         self.inter_objs = []
 
@@ -54,7 +54,7 @@ class Player(Entity):
             self.death_animation()
         self.count_frames += 1
         super().update()
-        self.info = pygame.time.get_ticks()
+        self.info = self.state
 
 # функции состояний
     def walk_towards(self):
@@ -116,9 +116,7 @@ class Player(Entity):
         self.WEAPON.attack()
 
     def shield_animation(self):
-        # код
-        self.state = StateMachine.IDLE
-        self.cur_frame = 0
+        self.SHIELD.defend()
 
     def death_animation(self):
         self.kill()

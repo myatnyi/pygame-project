@@ -1,6 +1,6 @@
 import pygame
 from statemachine import *
-
+import math
 
 class Ability:
     def __init__(self, owner):
@@ -46,13 +46,18 @@ class ChargeAndAttack(Ability):
             self.used_time = pygame.time.get_ticks()
 
 
-class Weapon(Ability):
+class Weapon:
+    def __init__(self, owner):
+        self.owner = owner
+        self.DAMAGE = 0
+        self.img_name = ''
+
+
+class Sword(Weapon):
     def __init__(self, owner):
         super().__init__(owner)
-        self.regen_time = 1000
-        self.charge_time = 0
-        self.attack_time = 0
         self.DAMAGE = 3
+        self.img_name = 'sword.png'
 
     def attack(self):
         self.owner.draw_shadow(self.owner.image, self.owner.rect, (255, 0, 0, 128), 4)
@@ -63,4 +68,24 @@ class Weapon(Ability):
         else:
             self.owner.move_towards(2, 1)
         if self.owner.cur_frame == 4:
+            self.owner.state = StateMachine.IDLE
+
+
+class Shield(Weapon):
+    def __init__(self, owner):
+        super().__init__(owner)
+        self.DAMAGE = 0
+        self.img_name = 'shield.png'
+
+    def defend(self):
+        self.owner.change_frame(self.owner.shield_sheet[self.owner.determine_sheet()], 0.2)
+        if self.owner.cur_frame > 4:
+            self.owner.cur_frame = 4
+        self.owner.draw_shadow(self.owner.load_image('bubble.png'),
+                               [self.owner.rect.centerx + math.sin(pygame.time.get_ticks() / 100) * 40,
+                                self.owner.rect.centery], (0, 0, 0, 0), 8)
+        button = pygame.mouse.get_pressed()
+        if button[2]:
+            self.owner.state = StateMachine.SHIELD
+        else:
             self.owner.state = StateMachine.IDLE

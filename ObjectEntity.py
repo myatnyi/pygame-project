@@ -173,6 +173,9 @@ class Entity(Object):
 
     def get_damaged(self, damage):
         self.hp -= damage
+        if pygame.time.get_ticks() - self.resist_time > self.STUN_TIME:
+            self.state = StateMachine.IDLE
+            self.draw_shadow(self.image, self.rect, (255, 0, 0, self.image.get_alpha()), 128)
 
     def check_stun(self):
         if pygame.time.get_ticks() - self.resist_time > self.STUN_TIME and self.state == StateMachine.STUN:

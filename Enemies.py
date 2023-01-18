@@ -102,22 +102,32 @@ class Bleb(Enemy):
         return sheets
 
     def interact(self):
-        if self.target.state == StateMachine.ATTACK and self.state != StateMachine.STUN:
-            self.get_damaged(self.target.WEAPON.DAMAGE)
-            self.state = StateMachine.STUN
-            self.resist_time = pygame.time.get_ticks()
-            self.direction = self.target.direction
-            self.target.stop()
-        elif self.target.state != StateMachine.ATTACK and self.target.state != StateMachine.STUN \
-                and self.state != StateMachine.STUN:
-            self.target.get_damaged(self.ATTACK.DAMAGE if self.state == StateMachine.ATTACK else self.CONTACT_DAMAGE)
-            self.target.state = StateMachine.STUN
-            if pygame.time.get_ticks() < self.target.resist_time + self.target.STUN_TIME + 20:
-                self.target.direction = -self.direction
-            else:
-                self.target.direction = self.direction
-            self.target.resist_time = pygame.time.get_ticks()
-            self.velocity = pygame.math.Vector2()
+        if self.state != StateMachine.STUN:
+            match self.target.state:
+                case StateMachine.ATTACK:
+                    self.get_damaged(self.target.WEAPON.DAMAGE)
+                    self.state = StateMachine.STUN
+                    self.resist_time = pygame.time.get_ticks()
+                    self.direction = self.target.direction
+                    self.target.stop()
+                case StateMachine.SHIELD:
+                    self.direction = -self.direction
+                    if self.state == StateMachine.ATTACK:
+                        self.ATTACK.regened = False
+                        self.ATTACK.used_time = pygame.time.get_ticks()
+                    self.state = StateMachine.STUN
+                    self.resist_time = pygame.time.get_ticks()
+                case _:
+                    if self.target.state != StateMachine.STUN:
+                        self.target.get_damaged(
+                            self.ATTACK.DAMAGE if self.state == StateMachine.ATTACK else self.CONTACT_DAMAGE)
+                        self.target.state = StateMachine.STUN
+                        if pygame.time.get_ticks() < self.target.resist_time + self.target.STUN_TIME + 20:
+                            self.target.direction = -self.direction
+                        else:
+                            self.target.direction = self.direction
+                        self.target.resist_time = pygame.time.get_ticks()
+                        self.velocity = pygame.math.Vector2()
 
     def walk_anim(self):
         self.image = pygame.transform.scale_by(self.image, (1, 1 + math.sin(pygame.time.get_ticks() / 100) * 0.2))
