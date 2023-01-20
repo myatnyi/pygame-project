@@ -1,3 +1,4 @@
+import os.path
 import sys
 import random
 from Player import *
@@ -92,6 +93,8 @@ def start_screen():
     start_game_btn = Button(200, 50, 850, 400, 'start', MenuSM.START, 30)
     leave_game_btn = Button(200, 50, 850, 470, 'leave', MenuSM.LEAVE, 30)
     print_text('start game!', 800, 320, 'white', 50)
+    pygame.mixer.music.load(os.path.join('data', 'menu_or_final.mp3'))
+    pygame.mixer.music.play(-1)
     while True:
         for event in pygame.event.get():
             if event.type == pygame.QUIT:
@@ -120,6 +123,8 @@ def final_screen():
     print_text(f'kills: {KILLS}', 840, 260, 'white', 70)
     print_text(f'time: {TIME}', 840, 320, 'white', 70)
     print_text(f'score: {SCORE}', 840, 380, 'white', 70)
+    pygame.mixer.music.load(os.path.join('data', 'menu_or_final.mp3'))
+    pygame.mixer.music.play(-1)
     while True:
         for event in pygame.event.get():
             if event.type == pygame.QUIT:
@@ -127,6 +132,7 @@ def final_screen():
             elif event.type == pygame.KEYDOWN or \
                     event.type == pygame.MOUSEBUTTONDOWN:
                 return
+
 
         if STATE != MenuSM.FINAL:
             return
@@ -148,6 +154,8 @@ def game():
     enemies.add(bleb)
     player.get_inter_objs(enemies)
     bg = Background()
+    pygame.mixer.music.load(os.path.join('data', 'game_music.mp3'))
+    pygame.mixer.music.play(-1)
 
     while True:
         for event in pygame.event.get():
@@ -160,6 +168,7 @@ def game():
         Heart(player, 20, 7)
         bg.update()
         level.draw_border(level.read_file()[0])
+
 
         if STATE != MenuSM.START:
             return
