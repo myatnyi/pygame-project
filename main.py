@@ -1,16 +1,34 @@
 import sys
+import random
 from Player import *
 from Enemies import *
 from Levels import *
 from UI import *
+from ObjectEntity import *
 
 FPS = 60
 pygame.init()
 pygame.display.set_caption('Жока и бока')
 size = WIDTH, HEIGHT = 1920, 1080
 screen = pygame.display.set_mode(size)
+screen = pygame.display.set_mode((1920, 1080), pygame.NOFRAME)
 clock = pygame.time.Clock()
 DEBUG = True
+
+
+class Background():
+    def __init__(self):
+        super().__init__()
+        self.stars = []
+        for i in range(50):
+            self.stars.append((random.randrange(20, 1100), random.randrange(20, 1920)))
+        self.stars_group = pygame.sprite.Group()
+        for i in range(len(self.stars)):
+            star = Object(screen, 'star.png', self.stars[i][0], self.stars[i][1], self.stars_group)
+    def update(self):
+        self.stars_group.update()
+        self.stars_group.draw(screen)
+
 
 class MenuSM(Enum):
     MENU = 0
@@ -116,15 +134,18 @@ def game():
     bleb = Bleb(screen, 'bleb.png', 400, 400, all_sprites, player, obstacle_level=level.read_file()[1])
     enemies.add(bleb)
     player.get_inter_objs(enemies)
+
     while True:
         for event in pygame.event.get():
             if event.type == pygame.QUIT or event.type == pygame.KEYDOWN and event.key == pygame.K_ESCAPE:
-                terminate()
+                STATE = MenuSM.MENU
+                start_screen()
 
-        screen.fill('red')
+        screen.fill('black')
         level.draw_border(level.read_file()[0])
         all_sprites.update()
         Heart(player, 20, 7)
+        Background()
 
         if STATE != MenuSM.START:
             return
