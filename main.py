@@ -16,6 +16,10 @@ screen = pygame.display.set_mode((1920, 1080), pygame.NOFRAME)
 clock = pygame.time.Clock()
 DEBUG = True
 
+pygame.mixer.music.load(os.path.join('data', 'menu_or_final.mp3'))
+pygame.mixer.music.play(-1)
+pygame.mixer.music.set_volume(0.2)
+
 class Star(Object):
     def __init__(self, screen, prev_img, x, y, all_sprites):
         super().__init__(screen, prev_img, x, y, all_sprites)
@@ -75,12 +79,14 @@ class Button:
         if rect.collidepoint(pos):
             rect = pygame.draw.rect(self.screen, self.active_color, (self.x, self.y, self.width, self.height))
             print_text(f'>>{self.message}<<', self.x, self.y + 10, 'black', self.size_text)
+            if pygame.mouse.get_pressed()[0] == True:
+                get_damage_sound = pygame.mixer.Sound(os.path.join('data', 'push_btn.mp3'))
+                get_damage_sound.play()
+                get_damage_sound.set_volume(1)
         else:
             print_text(self.message, self.x + 50, self.y + 10, 'black', self.size_text)
         if pygame.mouse.get_pressed()[0] == 1 and rect.collidepoint(pos):
             STATE = self.state
-
-
 
 
 def print_text(text, x, y, color, size):
@@ -93,8 +99,6 @@ def start_screen():
     start_game_btn = Button(200, 50, 850, 400, 'start', MenuSM.START, 30)
     leave_game_btn = Button(200, 50, 850, 470, 'leave', MenuSM.LEAVE, 30)
     print_text('start game!', 800, 320, 'white', 50)
-    pygame.mixer.music.load(os.path.join('data', 'menu_or_final.mp3'))
-    pygame.mixer.music.play(-1)
     while True:
         for event in pygame.event.get():
             if event.type == pygame.QUIT:
@@ -125,6 +129,7 @@ def final_screen():
     print_text(f'score: {SCORE}', 840, 380, 'white', 70)
     pygame.mixer.music.load(os.path.join('data', 'menu_or_final.mp3'))
     pygame.mixer.music.play(-1)
+    pygame.mixer.music.set_volume(0.1)
     while True:
         for event in pygame.event.get():
             if event.type == pygame.QUIT:
@@ -156,6 +161,7 @@ def game():
     bg = Background()
     pygame.mixer.music.load(os.path.join('data', 'game_music.mp3'))
     pygame.mixer.music.play(-1)
+    pygame.mixer.music.set_volume(0.1)
 
     while True:
         for event in pygame.event.get():

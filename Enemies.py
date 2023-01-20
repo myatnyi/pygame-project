@@ -73,7 +73,8 @@ class Bleb(Enemy):
         self.hp = self.MAX_HP
         self.STUN_TIME = 500
         self.ATTACK = ChargeAndAttack(self)
-
+        self.bleb_attack_sound = pygame.mixer.Sound(os.path.join('data', 'bleb_attack.mp3'))
+        self.bleb_death_sound = pygame.mixer.Sound(os.path.join('data', 'bleb_get_damage_sound.mp3'))
     def update(self):
         self.position_before_colliding = self.rect
         match self.state:
@@ -107,6 +108,8 @@ class Bleb(Enemy):
                 case StateMachine.ATTACK:
                     self.get_damaged(self.target.WEAPON.DAMAGE)
                     self.state = StateMachine.STUN
+                    self.bleb_death_sound.play()
+                    self.bleb_death_sound.set_volume(0.5)
                     self.resist_time = pygame.time.get_ticks()
                     self.direction = self.target.direction
                     self.target.stop()
@@ -121,6 +124,8 @@ class Bleb(Enemy):
                     if self.target.state != StateMachine.STUN:
                         self.target.get_damaged(
                             self.ATTACK.DAMAGE if self.state == StateMachine.ATTACK else self.CONTACT_DAMAGE)
+                        self.bleb_attack_sound.play()
+                        self.bleb_attack_sound.set_volume(0.5)
                         self.target.state = StateMachine.STUN
                         if pygame.time.get_ticks() < self.target.resist_time + self.target.STUN_TIME + 20:
                             self.target.direction = -self.direction
