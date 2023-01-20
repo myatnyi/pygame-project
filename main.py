@@ -15,16 +15,29 @@ screen = pygame.display.set_mode((1920, 1080), pygame.NOFRAME)
 clock = pygame.time.Clock()
 DEBUG = True
 
+class Star(Object):
+    def __init__(self, screen, prev_img, x, y, all_sprites):
+        super().__init__(screen, prev_img, x, y, all_sprites)
+        self.img = self.load_image(prev_img)
+        self.cur_frame = random.randrange(0, 3)
+        self.count_frames = 0
+        self.frames = self.cut_sheet(self.img, 2, 2)
+        self.image = self.frames[self.cur_frame]
+        self.rect = self.rect.move(x, y)
+
+    def update(self):
+        self.change_frame(self.frames, 0.1)
+        self.count_frames += 1
 
 class Background():
     def __init__(self):
         super().__init__()
         self.stars = []
-        for i in range(50):
-            self.stars.append((random.randrange(20, 1100), random.randrange(20, 1920)))
+        for i in range(300):
+            self.stars.append((random.randrange(0, 1800), random.randrange(0, 1920)))
         self.stars_group = pygame.sprite.Group()
         for i in range(len(self.stars)):
-            star = Object(screen, 'star.png', self.stars[i][0], self.stars[i][1], self.stars_group)
+            star = Star(screen, 'star.png', self.stars[i][0], self.stars[i][1], self.stars_group)
     def update(self):
         self.stars_group.update()
         self.stars_group.draw(screen)
@@ -134,6 +147,7 @@ def game():
     bleb = Bleb(screen, 'bleb.png', 400, 400, all_sprites, player, obstacle_level=level.read_file()[1])
     enemies.add(bleb)
     player.get_inter_objs(enemies)
+    bg = Background()
 
     while True:
         for event in pygame.event.get():
@@ -142,10 +156,10 @@ def game():
                 start_screen()
 
         screen.fill('black')
-        level.draw_border(level.read_file()[0])
         all_sprites.update()
         Heart(player, 20, 7)
-        Background()
+        bg.update()
+        level.draw_border(level.read_file()[0])
 
         if STATE != MenuSM.START:
             return
