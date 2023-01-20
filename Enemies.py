@@ -5,8 +5,8 @@ from Abilities import *
 
 
 class Enemy(Entity):
-    def __init__(self, screen, prev_img, x, y, all_sprites, target, obstacle_level=[]):
-        super().__init__(screen, prev_img, x, y, all_sprites, obstacle_level)
+    def __init__(self, screen, prev_img, x, y, all_sprites, target):
+        super().__init__(screen, prev_img, x, y, all_sprites)
         self.MAX_SPEED = 8
         self.ACCELERATION = 2
         self.FRICTION = 0.9
@@ -20,7 +20,7 @@ class Enemy(Entity):
         self.STUN_TIME = 500
 
     def update(self):
-        self.position_before_colliding = self.rect
+        self.position_before_colliding = self.rect, self.walk_hitbox
         super().update()
         if self.hp <= 0:
             self.state = StateMachine.DEATH
@@ -57,11 +57,11 @@ class Enemy(Entity):
 
 
 class Bleb(Enemy):
-    def __init__(self, screen, prev_img, x, y, all_sprites, target, obstacle_level=[]):
+    def __init__(self, screen, prev_img, x, y, all_sprites, target):
         # загрузка анимаций
         self.anim_sheet = self.load_animation('bleb', 5)
         # инит
-        super().__init__(screen, prev_img, x, y, all_sprites, target, obstacle_level)
+        super().__init__(screen, prev_img, x, y, all_sprites, target)
         self.MAX_SPEED = 6
         self.ACCELERATION = 1
         self.FRICTION = 0.9
@@ -75,7 +75,7 @@ class Bleb(Enemy):
         self.ATTACK = ChargeAndAttack(self)
 
     def update(self):
-        self.position_before_colliding = self.rect
+        self.position_before_colliding = self.rect, self.walk_hitbox
         match self.state:
             case StateMachine.IDLE:
                 self.change_frame(self.anim_sheet[0 if self.calculate_target_vector().y > 0 else 1], 0.2)

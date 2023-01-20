@@ -1,5 +1,8 @@
 import sys
 import random
+
+import pygame.draw
+
 from Player import *
 from Enemies import *
 from Levels import *
@@ -10,10 +13,13 @@ FPS = 60
 pygame.init()
 pygame.display.set_caption('Жока и бока')
 size = WIDTH, HEIGHT = 1920, 1080
-screen = pygame.display.set_mode(size)
 screen = pygame.display.set_mode((1920, 1080), pygame.NOFRAME)
 clock = pygame.time.Clock()
-DEBUG = True
+DEBUG = False
+FLOOR = 1
+KILLS = 0
+TIME = 0
+SCORE = 0
 
 class Star(Object):
     def __init__(self, screen, prev_img, x, y, all_sprites):
@@ -26,18 +32,19 @@ class Star(Object):
         self.rect = self.rect.move(x, y)
 
     def update(self):
-        self.change_frame(self.frames, 0.1)
+        self.change_frame(self.frames, 0.05)
         self.count_frames += 1
 
 class Background():
-    def __init__(self):
+    def __init__(self, negative=False):
         super().__init__()
         self.stars = []
         for i in range(300):
-            self.stars.append((random.randrange(0, 1800), random.randrange(0, 1920)))
+            self.stars.append((random.randrange(0, 1920), (random.randrange(0, 1080))))
         self.stars_group = pygame.sprite.Group()
         for i in range(len(self.stars)):
-            star = Star(screen, 'star.png', self.stars[i][0], self.stars[i][1], self.stars_group)
+            star = Star(screen, 'star.png' if not negative else 'star-negative.png', self.stars[i][0], self.stars[i][1],
+                        self.stars_group)
     def update(self):
         self.stars_group.update()
         self.stars_group.draw(screen)
@@ -80,12 +87,30 @@ class Button:
             STATE = self.state
 
 
-
-
-def print_text(text, x, y, color, size):
+def print_text(text, x, y, color, size, centered=False):
     font = pygame.font.Font(os.path.join(pathlib.Path(__file__).parent.resolve(), 'data', 'cool_font.ttf'), size)
     need_text = font.render(text, True, pygame.Color(color))
-    screen.blit(need_text, (x, y))
+    intro_rect = need_text.get_rect()
+    intro_rect.y = y - intro_rect.height // 2 if centered else y
+    intro_rect.x = x - intro_rect.width // 2 if centered else x
+    screen.blit(need_text, intro_rect)
+
+
+def transition(color):
+    expanded = False
+    cube = pygame.draw.rect(screen, color, (WIDTH // 2, HEIGHT // 2, 1, 2))
+    while True:
+        if not expanded:
+            cube = pygame.draw.rect(screen, color, ((WIDTH - cube.width) // 2, (HEIGHT - cube.height) // 2, 2,
+                                                    math.ceil(cube.height * 1.1)))
+            if cube.height >= HEIGHT:
+                expanded = True
+        else:
+            cube = pygame.draw.rect(screen, color, ((WIDTH - cube.width) // 2, (HEIGHT - cube.height) // 2,
+                                                    math.ceil(cube.width * 1.02), cube.height))
+            if cube.width >= WIDTH:
+                return
+        pygame.display.flip()
 
 
 def start_screen():
@@ -109,9 +134,6 @@ def start_screen():
         clock.tick(FPS)
 
 
-KILLS = 0
-TIME = 0
-SCORE = 0
 def final_screen():
     screen.fill('black')
     restart_game_btn = Button(200, 50, 850, 500, 'restart', MenuSM.START, 30)
@@ -137,29 +159,34 @@ def final_screen():
         clock.tick(FPS)
 
 
-def game():
+def level(player, all_spirtes):
     global STATE
-    all_sprites = pygame.sprite.Group()
+    all_sprites = all_spirtes
     font = pygame.font.Font(os.path.join(pathlib.Path(__file__).parent.resolve(), 'data', 'cool_font.ttf'), 30)
     enemies = pygame.sprite.Group()
-    level = Level(screen, 'level1.txt')
-    player = Player(screen, 'chr.png', WIDTH // 2, HEIGHT // 2, all_sprites, obstacle_level=level.read_file()[1])
-    bleb = Bleb(screen, 'bleb.png', 400, 400, all_sprites, player, obstacle_level=level.read_file()[1])
+    level = Level(screen, f'level{random.randint(1, 10)}.txt')
+    player = player
+    player.load_obs(level.read_file()[1])
+    bleb = Bleb(screen, 'bleb.png', 400, 400, all_sprites, player)
+    bleb.load_obs(level.read_file()[1])
     enemies.add(bleb)
     player.get_inter_objs(enemies)
+    heart = Heart(player, 20, 7)
     bg = Background()
-
     while True:
         for event in pygame.event.get():
             if event.type == pygame.QUIT or event.type == pygame.KEYDOWN and event.key == pygame.K_ESCAPE:
                 STATE = MenuSM.MENU
                 start_screen()
-
         screen.fill('black')
-        all_sprites.update()
-        Heart(player, 20, 7)
         bg.update()
         level.draw_border(level.read_file()[0])
+        print_text(f'FLOOR {FLOOR}', WIDTH // 2, HEIGHT // 2, 'white', 50, centered=True)
+        all_sprites.update()
+        heart.draw_hp_line()
+
+        if not enemies:
+            break
 
         if STATE != MenuSM.START:
             return
@@ -175,9 +202,32 @@ def game():
             intro_rect.x = player.rect.x + player.rect.width // 2 - intro_rect.width // 2
             screen.blit(string_rendered, intro_rect)
         all_sprites.draw(screen)
-        Heart(player, 20, 7).draw_hp_line()
         pygame.display.flip()
         clock.tick(FPS)
+    transition('white')
+
+
+def cards():
+    bg = Background(negative=True)
+    while True:
+        for event in pygame.event.get():
+            if event.type == pygame.KEYDOWN and event.key == pygame.K_ESCAPE:
+                terminate()
+        screen.fill('white')
+        print_text('PICK A CARD', WIDTH // 2, HEIGHT // 2, 'black', 50, centered=True)
+        bg.update()
+        pygame.display.flip()
+
+
+def game():
+    all_sprites = pygame.sprite.Group()
+    player = Player(screen, 'chr.png', WIDTH // 2, HEIGHT // 2, all_sprites)
+    while True:
+        transition('black')
+        level(player, all_sprites)
+        if STATE != MenuSM.START:
+            return
+        cards()
 
 
 def terminate():

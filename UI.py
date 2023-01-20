@@ -11,7 +11,6 @@ class Heart(pygame.sprite.Sprite):
         self.heart.rect.y = y
         hearts = pygame.sprite.Group()
         self.player = player
-        screen.blit(self.heart.image, self.heart.rect)
 
     def draw_hp_line(self):
         if self.player.hp < 0:
@@ -21,6 +20,6 @@ class Heart(pygame.sprite.Sprite):
         paint = (self.player.hp / self.player.MAX_HP) * LENGTH
         big_rect = pygame.Rect(70, 10, LENGTH, HEIGHT)
         painted_rect = pygame.Rect(70, 10, paint, HEIGHT)
-
+        screen.blit(self.heart.image, self.heart.rect)
         pygame.draw.rect(screen, 'white', painted_rect)
         pygame.draw.rect(screen, 'black', big_rect, 2)

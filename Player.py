@@ -3,7 +3,7 @@ from Abilities import *
 
 
 class Player(Entity):
-    def __init__(self, screen, prev_img, x, y, all_sprites, obstacle_level=[]):
+    def __init__(self, screen, prev_img, x, y, all_sprites):
         # загрузка анимаций
         self.idle_sheet = self.load_animation('chr-idle', 5)
         self.walk_sheet = self.load_animation('chr-walk', 5)
@@ -12,7 +12,7 @@ class Player(Entity):
         dead_img = self.load_image(f'chr-dead')
         self.dead_sheet = self.cut_sheet(dead_img, 1, 1)
         # инит
-        super().__init__(screen, prev_img, x, y, all_sprites, obstacle_level)
+        super().__init__(screen, prev_img, x, y, all_sprites)
         self.state = StateMachine.IDLE
         self.MAX_SPEED = 8
         self.ACCELERATION = 2
@@ -29,7 +29,7 @@ class Player(Entity):
 
     def update(self):
         previous_state = self.state
-        self.position_before_colliding = self.rect
+        self.position_before_colliding = self.rect, self.walk_hitbox
         match self.state:
             case StateMachine.IDLE:
                 self.walk_towards()
