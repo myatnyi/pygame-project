@@ -2,7 +2,7 @@ import sys
 import random
 
 import pygame.draw
-
+from cards import *
 from Player import *
 from Enemies import *
 from Levels import *
@@ -209,6 +209,10 @@ def level(player, all_spirtes):
 
 def cards():
     bg = Background(negative=True)
+    cards = pygame.sprite.Group()
+    card1 = Card(screen, 'card.png', 100, 1080, cards)
+    card2 = Card(screen, 'card.png', 770, 1080, cards)
+    card3 = Card(screen, 'card.png', 1440, 1080, cards)
     while True:
         for event in pygame.event.get():
             if event.type == pygame.KEYDOWN and event.key == pygame.K_ESCAPE:
@@ -216,6 +220,8 @@ def cards():
         screen.fill('white')
         print_text('PICK A CARD', WIDTH // 2, HEIGHT // 2, 'black', 50, centered=True)
         bg.update()
+        cards.update()
+        cards.draw(screen)
         pygame.display.flip()
 
 

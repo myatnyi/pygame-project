@@ -21,5 +21,5 @@ class Heart(pygame.sprite.Sprite):
         big_rect = pygame.Rect(70, 10, LENGTH, HEIGHT)
         painted_rect = pygame.Rect(70, 10, paint, HEIGHT)
         screen.blit(self.heart.image, self.heart.rect)
-        pygame.draw.rect(screen, 'white', painted_rect)
-        pygame.draw.rect(screen, 'black', big_rect, 2)
+        pygame.draw.rect(screen, (137, 23, 48), painted_rect)
+        pygame.draw.rect(screen, 'white', big_rect, 2)
