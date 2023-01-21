@@ -66,7 +66,7 @@ class Player(Entity):
     def attack(self):
         button = pygame.mouse.get_pressed()
         if button[0]:
-            attack_sound = pygame.mixer.Sound(os.path.join('data', 'attack.mp3'))
+            attack_sound = pygame.mixer.Sound(os.path.join(pathlib.Path(__file__).parent.resolve(), 'data', 'attack.mp3'))
             attack_sound.play()
             attack_sound.set_volume(0.5)
             self.direction = self.mouse_vector()
@@ -76,7 +76,7 @@ class Player(Entity):
     def shield(self):
         button = pygame.mouse.get_pressed()
         if button[2]:
-            shield_sound = pygame.mixer.Sound(os.path.join('data', 'shield_sound.mp3'))
+            shield_sound = pygame.mixer.Sound(os.path.join(pathlib.Path(__file__).parent.resolve(), 'data', 'shield_sound.mp3'))
             shield_sound.play()
             shield_sound.set_volume(0.5)
             self.state = StateMachine.SHIELD
@@ -122,11 +122,11 @@ class Player(Entity):
     def get_damaged(self, damage):
         super().get_damaged(damage)
         if self.hp >= 0:
-            get_damage_sound = pygame.mixer.Sound(os.path.join('data', 'get_damage.mp3'))
+            get_damage_sound = pygame.mixer.Sound(os.path.join(pathlib.Path(__file__).parent.resolve(), 'data', 'get_damage.mp3'))
             get_damage_sound.play()
             get_damage_sound.set_volume(0.3)
         else:
-            get_damage_sound = pygame.mixer.Sound(os.path.join('data', 'get_damage_last.mp3'))
+            get_damage_sound = pygame.mixer.Sound(os.path.join(pathlib.Path(__file__).parent.resolve(), 'data', 'get_damage_last.mp3'))
             get_damage_sound.play()
             get_damage_sound.set_volume(0.5)
     def attack_animation(self):

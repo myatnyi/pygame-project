@@ -73,8 +73,9 @@ class Bleb(Enemy):
         self.hp = self.MAX_HP
         self.STUN_TIME = 500
         self.ATTACK = ChargeAndAttack(self)
-        self.bleb_attack_sound = pygame.mixer.Sound(os.path.join('data', 'bleb_attack.mp3'))
-        self.bleb_death_sound = pygame.mixer.Sound(os.path.join('data', 'bleb_get_damage_sound.mp3'))
+        self.bleb_attack_sound = pygame.mixer.Sound(os.path.join(pathlib.Path(__file__).parent.resolve(), 'data', 'bleb_attack.mp3'))
+        self.bleb_death_sound = pygame.mixer.Sound(os.path.join(pathlib.Path(__file__).parent.resolve(), 'data', 'bleb_get_damage_sound.mp3'))
+
     def update(self):
         self.position_before_colliding = self.rect, self.walk_hitbox
         match self.state:

@@ -22,7 +22,7 @@ KILLS = 0
 TIME = 0
 SCORE = 0
 
-pygame.mixer.music.load(os.path.join('data', 'menu_or_final.mp3'))
+pygame.mixer.music.load(os.path.join(pathlib.Path(__file__).parent.resolve(), 'data', 'menu_or_final.mp3'))
 pygame.mixer.music.play(-1)
 pygame.mixer.music.set_volume(0.2)
 
@@ -86,7 +86,7 @@ class Button:
             rect = pygame.draw.rect(self.screen, self.active_color, (self.x, self.y, self.width, self.height))
             print_text(f'>>{self.message}<<', self.x, self.y + 10, 'black', self.size_text)
             if pygame.mouse.get_pressed()[0]:
-                get_damage_sound = pygame.mixer.Sound(os.path.join('data', 'push_btn.mp3'))
+                get_damage_sound = pygame.mixer.Sound(os.path.join(pathlib.Path(__file__).parent.resolve(), 'data', 'push_btn.mp3'))
                 get_damage_sound.play()
                 get_damage_sound.set_volume(1)
         else:
@@ -166,7 +166,7 @@ def final_screen():
     leave_game_btn = Button(200, 50, 850, 670, 'leave', MenuSM.LEAVE, 30)
     print_text('you lose(', WIDTH // 2, 400, 'red', 80, centered=True)
     print_text(f'FLOOR: {FLOOR}', WIDTH // 2, 500, 'white', 70, centered=True)
-    pygame.mixer.music.load(os.path.join('data', 'menu_or_final.mp3'))
+    pygame.mixer.music.load(os.path.join(pathlib.Path(__file__).parent.resolve(), 'data', 'menu_or_final.mp3'))
     pygame.mixer.music.play(-1)
     pygame.mixer.music.set_volume(0.1)
     while True:
@@ -209,7 +209,7 @@ def level(player, all_spirtes):
     player.get_inter_objs(enemies)
     heart = Heart(player, 20, 7)
     bg = Background()
-    pygame.mixer.music.load(os.path.join('data', 'game_music.mp3'))
+    pygame.mixer.music.load(os.path.join(pathlib.Path(__file__).parent.resolve(), 'data', 'game_music.mp3'))
     pygame.mixer.music.play(-1)
     pygame.mixer.music.set_volume(0.1)
     while True:

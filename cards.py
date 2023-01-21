@@ -55,7 +55,7 @@ class Card(Object):
             self.rect = self.image.get_rect()
             self.rect.center = cntr
             if pygame.mouse.get_pressed()[0] and not any(self.group.sprites()):
-                сhoose_card = pygame.mixer.Sound(os.path.join('data', 'choose_card.mp3'))
+                сhoose_card = pygame.mixer.Sound(os.path.join(pathlib.Path(__file__).parent.resolve(), 'data', 'choose_card.mp3'))
                 сhoose_card.play()
                 сhoose_card.set_volume(0.5)
                 match self.state:
