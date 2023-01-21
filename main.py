@@ -40,7 +40,7 @@ class Star(Object):
         self.change_frame(self.frames, 0.05)
         self.count_frames += 1
 
-class Background():
+class Background:
     def __init__(self, negative=False):
         super().__init__()
         self.stars = []
@@ -95,7 +95,6 @@ class Button:
         if pygame.mouse.get_pressed()[0] == 1 and rect.collidepoint(pos):
             STATE = self.state
 
-
 def print_text(text, x, y, color, size, centered=False):
     font = pygame.font.Font(os.path.join(pathlib.Path(__file__).parent.resolve(), 'data', 'cool_font.ttf'), size)
     need_text = font.render(text, True, pygame.Color(color))
@@ -125,7 +124,8 @@ def transition(color):
 def start_screen():
     start_game_btn = Button(200, 50, 850, 400, 'start', MenuSM.START, 30)
     leave_game_btn = Button(200, 50, 850, 470, 'leave', MenuSM.LEAVE, 30)
-    print_text('start game!', 800, 320, 'white', 50)
+    print_text('R o g u e g e', 800, 320, 'white', 50)
+
     while True:
         for event in pygame.event.get():
             if event.type == pygame.QUIT:
@@ -144,16 +144,16 @@ def start_screen():
 
 
 def final_screen():
+    global FLOOR
     screen.fill('black')
     restart_game_btn = Button(200, 50, 850, 500, 'restart', MenuSM.START, 30)
     leave_game_btn = Button(200, 50, 850, 570, 'leave', MenuSM.LEAVE, 30)
     print_text('you lose(', 800, 150, 'white', 120)
-    print_text(f'kills: {KILLS}', 840, 260, 'white', 70)
-    print_text(f'time: {TIME}', 840, 320, 'white', 70)
-    print_text(f'score: {SCORE}', 840, 380, 'white', 70)
+    print_text(f'FLOOR: {FLOOR}', 840, 320, 'white', 70)
     pygame.mixer.music.load(os.path.join('data', 'menu_or_final.mp3'))
     pygame.mixer.music.play(-1)
     pygame.mixer.music.set_volume(0.1)
+    FLOOR = 0
     while True:
         for event in pygame.event.get():
             if event.type == pygame.QUIT:
@@ -177,19 +177,23 @@ def level(player, all_spirtes):
     all_sprites = all_spirtes
     font = pygame.font.Font(os.path.join(pathlib.Path(__file__).parent.resolve(), 'data', 'cool_font.ttf'), 30)
     enemies = pygame.sprite.Group()
-    level = Level(screen, f'level{random.randint(1, 10)}.txt')
+    lvl = random.randint(1, 10)
+    level = Level(screen, f'level{lvl}.txt')
     player = player
     player.load_obs(level.read_file()[1])
-    bleb = Bleb(screen, 'bleb.png', 400, 400, all_sprites, player)
-    bleb.load_obs(level.read_file()[1])
-    enemies.add(bleb)
+    with open(os.path.join(pathlib.Path(__file__).parent.resolve(), 'enemies', f'enemies{lvl}.txt'), 'r') as f:
+        for i in f.readlines():
+            pos = [int(x) for x in i.split()]
+            bleb = Bleb(screen, 'bleb.png', pos[0], pos[1], all_sprites, player)
+            bleb.load_obs(level.read_file()[1])
+            enemies.add(bleb)
     player.get_inter_objs(enemies)
     heart = Heart(player, 20, 7)
     bg = Background()
     pygame.mixer.music.load(os.path.join('data', 'game_music.mp3'))
     pygame.mixer.music.play(-1)
     pygame.mixer.music.set_volume(0.1)
-
+    print(lvl)
     while True:
         for event in pygame.event.get():
             if event.type == pygame.QUIT or event.type == pygame.KEYDOWN and event.key == pygame.K_ESCAPE:
@@ -200,11 +204,10 @@ def level(player, all_spirtes):
         level.draw_border(level.read_file()[0])
         print_text(f'FLOOR {FLOOR}', WIDTH // 2, HEIGHT // 2, 'white', 50, centered=True)
         all_sprites.update()
-        heart.draw_hp_line()
+        heart.draw_hp_line(screen)
 
         if not enemies:
             break
-
 
         if STATE != MenuSM.START:
             return
@@ -225,12 +228,12 @@ def level(player, all_spirtes):
     transition('white')
 
 
-def cards():
+def cards(player):
     bg = Background(negative=True)
     cards = pygame.sprite.Group()
-    card1 = Card(screen, 'card.png', 100, 1080, cards)
-    card2 = Card(screen, 'card.png', 770, 1080, cards)
-    card3 = Card(screen, 'card.png', 1440, 1080, cards)
+    card1 = Card(screen, 'card.png', 100, 1080, cards, player)
+    card2 = Card(screen, 'card.png', 770, 1080, cards, player)
+    card3 = Card(screen, 'card.png', 1440, 1080, cards, player)
     while True:
         for event in pygame.event.get():
             if event.type == pygame.KEYDOWN and event.key == pygame.K_ESCAPE:
@@ -238,12 +241,15 @@ def cards():
         screen.fill('white')
         print_text('PICK A CARD', WIDTH // 2, HEIGHT // 2, 'black', 50, centered=True)
         bg.update()
-        cards.update()
         cards.draw(screen)
+        cards.update()
+        if any(cards.sprites()):
+            return
         pygame.display.flip()
 
 
 def game():
+    global FLOOR
     all_sprites = pygame.sprite.Group()
     player = Player(screen, 'chr.png', WIDTH // 2, HEIGHT // 2, all_sprites)
     while True:
@@ -251,7 +257,9 @@ def game():
         level(player, all_sprites)
         if STATE != MenuSM.START:
             return
-        cards()
+        cards(player)
+
+        FLOOR += 1
 
 
 def terminate():

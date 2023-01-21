@@ -1,6 +1,7 @@
 import pygame
 from statemachine import *
 import math
+import random
 
 class Ability:
     def __init__(self, owner):
@@ -10,7 +11,7 @@ class Ability:
         self.use_time = 0
         self.used_time = 0
         self.attack_time = 0
-        self.regened = True
+        self.regened = False
         self.DAMAGE = 0
 
     def update(self):
@@ -29,7 +30,7 @@ class Ability:
 class ChargeAndAttack(Ability):
     def __init__(self, owner):
         super().__init__(owner)
-        self.regen_time = 5000
+        self.regen_time = 5000 + random.randint(-1000, 1000)
         self.charge_time = 500
         self.attack_time = 1000
         self.DAMAGE = 5

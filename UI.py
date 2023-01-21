@@ -12,7 +12,7 @@ class Heart(pygame.sprite.Sprite):
         hearts = pygame.sprite.Group()
         self.player = player
 
-    def draw_hp_line(self):
+    def draw_hp_line(self, screen):
         if self.player.hp < 0:
             self.player.hp = 0
         LENGTH = 300

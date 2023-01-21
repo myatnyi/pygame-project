@@ -2,7 +2,6 @@ import pygame
 import pathlib
 import os
 
-
 class Level:
     def __init__(self, screen, filename):
         self.filename = filename
@@ -27,3 +26,6 @@ class Level:
     def draw_border(self, coords):
         border = pygame.draw.lines(self.screen, 'white', True, coords, 10)
         pygame.draw.polygon(self.screen, 'black', coords)
+
+    def update(self):
+        self.enemies.update()
