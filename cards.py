@@ -9,7 +9,7 @@ from ObjectEntity import *
 class Card(Object):
     def __init__(self, screen, prev_img, x, y, all_sprites, player, delay):
         super().__init__(screen, prev_img, x, y, all_sprites)
-        self.state = random.randint(1, 3)
+        self.state = random.randint(1, 4)
         self.img = pygame.transform.scale_by(self.load_image(f'card{self.state}.png'), (3, 3))
         self.rect = self.rect.move(0, delay)
         self.image = self.img
@@ -63,6 +63,8 @@ class Card(Object):
                         self.player.hp += 5
                     case 3:
                         self.player.MAX_SPEED += 2
+                    case 4:
+                        self.player.hp = self.player.MAX_HP
                 self.picked = True
 
     def __bool__(self):

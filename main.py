@@ -194,8 +194,12 @@ def level(player, all_spirtes):
     enemies = pygame.sprite.Group()
     lvl = random.randint(1, 10)
     level = Level(screen, f'level{lvl}.txt')
-    player = player
+    player.rect.left = WIDTH // 2
+    player.rect.top = HEIGHT // 2
+    player.walk_hitbox = pygame.Rect((player.rect.x, player.rect.y + player.rect.height * 0.7, player.rect.width,
+                                        player.rect.height * 0.3))
     player.load_obs(level.read_file()[1])
+    player.particles.empty()
     with open(os.path.join(pathlib.Path(__file__).parent.resolve(), 'enemies', f'enemies{lvl}.txt'), 'r') as f:
         for i in f.readlines():
             pos = [int(x) for x in i.split()]
