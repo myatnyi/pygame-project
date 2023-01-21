@@ -153,7 +153,6 @@ def final_screen():
     pygame.mixer.music.load(os.path.join('data', 'menu_or_final.mp3'))
     pygame.mixer.music.play(-1)
     pygame.mixer.music.set_volume(0.1)
-    FLOOR = 0
     while True:
         for event in pygame.event.get():
             if event.type == pygame.QUIT:
@@ -161,7 +160,6 @@ def final_screen():
             elif event.type == pygame.KEYDOWN or \
                     event.type == pygame.MOUSEBUTTONDOWN:
                 return
-
 
         if STATE != MenuSM.FINAL:
             return
@@ -193,12 +191,10 @@ def level(player, all_spirtes):
     pygame.mixer.music.load(os.path.join('data', 'game_music.mp3'))
     pygame.mixer.music.play(-1)
     pygame.mixer.music.set_volume(0.1)
-    print(lvl)
     while True:
         for event in pygame.event.get():
             if event.type == pygame.QUIT or event.type == pygame.KEYDOWN and event.key == pygame.K_ESCAPE:
-                STATE = MenuSM.MENU
-                start_screen()
+                terminate()
         screen.fill('black')
         bg.update()
         level.draw_border(level.read_file()[0])
@@ -252,6 +248,7 @@ def game():
     global FLOOR
     all_sprites = pygame.sprite.Group()
     player = Player(screen, 'chr.png', WIDTH // 2, HEIGHT // 2, all_sprites)
+    FLOOR = 1
     while True:
         transition('black')
         level(player, all_sprites)

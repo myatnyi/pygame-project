@@ -21,6 +21,7 @@ class Card(Object):
         self.picked = False
 
     def update(self):
+        super().update()
         match self.state:
             case 1:
                 text = '+УРОН'
@@ -28,7 +29,6 @@ class Card(Object):
                 text = '+ХП'
             case 3:
                 text = '+СКОРОСТЬ'
-        super().update()
         cntr = self.rect.center
         self.rect = self.image.get_rect()
         self.rect.center = cntr

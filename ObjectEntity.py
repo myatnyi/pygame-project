@@ -25,7 +25,7 @@ class Shadow(pygame.sprite.Sprite):
         self.image.set_alpha(128)
 
     def update(self):
-        if self.image.get_alpha() - 4 <= 0:
+        if self.image.get_alpha() - self.time <= 0:
             self.kill()
         else:
             self.screen.blit(self.color_rect.to_surface(unsetcolor=(0, 0, 0, 0), setcolor=self.color), self.rect)
@@ -43,6 +43,7 @@ class Object(pygame.sprite.Sprite):
         self.info = ''
         self.count_frames = 0
         self.screen = screen
+        self.particles = pygame.sprite.Group()
 
     def load_image(self, name):
         fullname = os.path.join('data', name)
@@ -63,6 +64,8 @@ class Object(pygame.sprite.Sprite):
         return frames
 
     def update(self):
+        self.particles.update()
+        self.particles.draw(self.screen)
         self.change_frame(self.frames, 1)
         self.count_frames += 1
 
@@ -90,7 +93,6 @@ class Entity(Object):
         self.bounce_dist = 0
         self.resist_time = 0
         self.obstacle_level = []
-        self.particles = pygame.sprite.Group()
         self.walk_hitbox = pygame.Rect((self.rect.x, self.rect.y + self.rect.height * 0.7, self.rect.width,
                                         self.rect.height * 0.3))
         self.position_before_colliding = self.rect, self.walk_hitbox
