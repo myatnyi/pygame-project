@@ -121,22 +121,37 @@ def transition(color):
         pygame.display.flip()
 
 
-def start_screen():
-    start_game_btn = Button(200, 50, 850, 400, 'start', MenuSM.START, 30)
-    leave_game_btn = Button(200, 50, 850, 470, 'leave', MenuSM.LEAVE, 30)
-    print_text('R o g u e g e', 800, 320, 'white', 50)
+def death_animation(player):
+    radius = 1
+    while True:
+        pygame.draw.circle(screen, 'red', (player.rect.x, player.rect.y), radius)
+        print(radius)
+        radius = math.ceil(radius * 1.02)
+        shadow = Shadow(screen, player.img, player.rect.x, player.rect.y, (0, 0, 0), 0)
+        shadow.update()
+        if radius > WIDTH * 2:
+            return
+        pygame.display.flip()
 
+
+
+def start_screen():
+    bg = Background()
+    start_game_btn = Button(200, 50, 850, 500, 'start', MenuSM.START, 30)
+    leave_game_btn = Button(200, 50, 850, 570, 'leave', MenuSM.LEAVE, 30)
+    fon = pygame.image.load(os.path.join(pathlib.Path(__file__).parent.resolve(), 'data', 'menu.png'))
+    print_text('R o g u e g e', WIDTH // 2, 400, 'white', 50, centered=True)
     while True:
         for event in pygame.event.get():
             if event.type == pygame.QUIT:
                 terminate()
-            elif event.type == pygame.KEYDOWN or \
-                    event.type == pygame.MOUSEBUTTONDOWN:
-                return
 
         if STATE != MenuSM.MENU:
             return
-
+        screen.fill('black')
+        bg.update()
+        screen.blit(fon, ((WIDTH - fon.get_size()[0]) // 2, (HEIGHT - fon.get_size()[1]) // 2))
+        print_text('R o g u e g e', WIDTH // 2, 400, 'white', 50, centered=True)
         start_game_btn.draw()
         leave_game_btn.draw()
         pygame.display.flip()
@@ -146,10 +161,12 @@ def start_screen():
 def final_screen():
     global FLOOR
     screen.fill('black')
-    restart_game_btn = Button(200, 50, 850, 500, 'restart', MenuSM.START, 30)
-    leave_game_btn = Button(200, 50, 850, 570, 'leave', MenuSM.LEAVE, 30)
-    print_text('you lose(', 800, 150, 'white', 120)
-    print_text(f'FLOOR: {FLOOR}', 840, 320, 'white', 70)
+    bg = Background(negative=True)
+    fon = pygame.image.load(os.path.join(pathlib.Path(__file__).parent.resolve(), 'data', 'menu.png'))
+    restart_game_btn = Button(200, 50, 850, 600, 'restart', MenuSM.START, 30)
+    leave_game_btn = Button(200, 50, 850, 670, 'leave', MenuSM.LEAVE, 30)
+    print_text('you lose(', WIDTH // 2, 400, 'red', 80, centered=True)
+    print_text(f'FLOOR: {FLOOR}', WIDTH // 2, 500, 'white', 70, centered=True)
     pygame.mixer.music.load(os.path.join('data', 'menu_or_final.mp3'))
     pygame.mixer.music.play(-1)
     pygame.mixer.music.set_volume(0.1)
@@ -157,13 +174,14 @@ def final_screen():
         for event in pygame.event.get():
             if event.type == pygame.QUIT:
                 terminate()
-            elif event.type == pygame.KEYDOWN or \
-                    event.type == pygame.MOUSEBUTTONDOWN:
-                return
 
         if STATE != MenuSM.FINAL:
             return
-
+        screen.fill('black')
+        bg.update()
+        screen.blit(fon, ((WIDTH - fon.get_size()[0]) // 2, (HEIGHT - fon.get_size()[1]) // 2))
+        print_text('you lose(', WIDTH // 2, 400, 'red', 80, centered=True)
+        print_text(f'FLOOR: {FLOOR}', WIDTH // 2, 500, 'white', 70, centered=True)
         restart_game_btn.draw()
         leave_game_btn.draw()
         pygame.display.flip()
@@ -252,6 +270,9 @@ def game():
     while True:
         transition('black')
         level(player, all_sprites)
+        if STATE == MenuSM.FINAL:
+            death_animation(player)
+            transition('black')
         if STATE != MenuSM.START:
             return
         cards(player)
