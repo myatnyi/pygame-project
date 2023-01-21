@@ -42,7 +42,6 @@ class Star(Object):
 
 class Background:
     def __init__(self, negative=False):
-        super().__init__()
         self.stars = []
         for i in range(300):
             self.stars.append((random.randrange(0, 1920), (random.randrange(0, 1080))))
@@ -86,7 +85,7 @@ class Button:
         if rect.collidepoint(pos):
             rect = pygame.draw.rect(self.screen, self.active_color, (self.x, self.y, self.width, self.height))
             print_text(f'>>{self.message}<<', self.x, self.y + 10, 'black', self.size_text)
-            if pygame.mouse.get_pressed()[0] == True:
+            if pygame.mouse.get_pressed()[0]:
                 get_damage_sound = pygame.mixer.Sound(os.path.join('data', 'push_btn.mp3'))
                 get_damage_sound.play()
                 get_damage_sound.set_volume(1)
@@ -245,9 +244,9 @@ def level(player, all_spirtes):
 def cards(player):
     bg = Background(negative=True)
     cards = pygame.sprite.Group()
-    card1 = Card(screen, 'card.png', 100, 1080, cards, player)
-    card2 = Card(screen, 'card.png', 770, 1080, cards, player)
-    card3 = Card(screen, 'card.png', 1440, 1080, cards, player)
+    card1 = Card(screen, 'card.png', 100, 1080, cards, player, 0)
+    card2 = Card(screen, 'card.png', 735, 1080, cards, player, 200)
+    card3 = Card(screen, 'card.png', 1370, 1080, cards, player, 400)
     while True:
         for event in pygame.event.get():
             if event.type == pygame.KEYDOWN and event.key == pygame.K_ESCAPE:
@@ -257,8 +256,9 @@ def cards(player):
         bg.update()
         cards.draw(screen)
         cards.update()
-        if any(cards.sprites()):
-            return
+        for card in cards.sprites():
+            if any(cards.sprites()) and card.rect.y + card.rect.height < 0:
+                return
         pygame.display.flip()
 
 
