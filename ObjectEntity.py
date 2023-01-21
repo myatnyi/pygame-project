@@ -67,12 +67,12 @@ class Object(pygame.sprite.Sprite):
         self.count_frames += 1
 
     def change_frame(self, frames, speed_coef):
-        self.cur_frame = round((self.cur_frame + speed_coef) % len(frames), 1)
+        self.cur_frame = round((self.cur_frame + speed_coef) % len(frames), 2)
         self.image = frames[math.trunc(self.cur_frame)]
 
 
 class Entity(Object):
-    def __init__(self, screen, prev_img, x, y, all_sprites, obstacle_level=[]):
+    def __init__(self, screen, prev_img, x, y, all_sprites):
         super().__init__(screen, prev_img, x, y, all_sprites)
         self.MAX_SPEED = 0
         self.ACCELERATION = 0
@@ -89,10 +89,11 @@ class Entity(Object):
         self.bounce_vel = 0
         self.bounce_dist = 0
         self.resist_time = 0
-        self.obstacle_level = obstacle_level
-        self.position_before_colliding = self.rect
+        self.obstacle_level = []
         self.particles = pygame.sprite.Group()
-        self.walk_hitbox = pygame.Rect((self.rect.x, self.rect.y + self.rect.height * 0.7, self.rect.width, self.rect.height * 0.3))
+        self.walk_hitbox = pygame.Rect((self.rect.x, self.rect.y + self.rect.height * 0.7, self.rect.width,
+                                        self.rect.height * 0.3))
+        self.position_before_colliding = self.rect, self.walk_hitbox
 
     def update(self):
         self.collision_interact()
@@ -169,7 +170,8 @@ class Entity(Object):
 
     def stop(self):
         self.velocity = pygame.math.Vector2()
-        self.rect = self.position_before_colliding
+        self.rect = self.position_before_colliding[0]
+        self.walk_hitbox = self.position_before_colliding[1]
 
     def get_damaged(self, damage):
         self.hp -= damage
@@ -184,4 +186,7 @@ class Entity(Object):
 
     def draw_shadow(self, surf, rect, color, time):
         self.particles.add(Shadow(self.screen, surf, rect[0], rect[1], color, time))
+
+    def load_obs(self, level):
+        self.obstacle_level = level
 
