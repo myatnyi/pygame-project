@@ -5,7 +5,7 @@ class Heart(pygame.sprite.Sprite):
     def __init__(self, player, x, y):
         super().__init__()
         self.heart = pygame.sprite.Sprite()
-        self.heart.image = pygame.image.load(os.path.join('data', 'heart.png'))
+        self.heart.image = pygame.image.load(os.path.join(pathlib.Path(__file__).parent.resolve(), 'data', 'heart.png'))
         self.heart.rect = self.heart.image.get_rect()
         self.heart.rect.x = x
         self.heart.rect.y = y
